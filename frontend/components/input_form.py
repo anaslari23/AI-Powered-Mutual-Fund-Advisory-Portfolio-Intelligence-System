@@ -64,7 +64,7 @@ def render_input_form():
             "Present Cost of Education", min_value=0.0, value=2000000.0, step=100000.0
         )
         education_years = st.number_input(
-            "Years to Education Goal", min_value=1, max_value=25, value=12
+            "Years to Education Goal", min_value=0, max_value=25, value=12
         )
 
         submitted = st.form_submit_button("Generate Financial Plan")
