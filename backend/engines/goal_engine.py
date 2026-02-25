@@ -66,7 +66,7 @@ def calculate_child_education_goal(
         return {
             "goal_name": "Child Education",
             "years_to_goal": 0,
-            "future_corpus": 0.0,
+            "future_corpus": float(present_cost),
             "required_sip": 0.0,
         }
 
