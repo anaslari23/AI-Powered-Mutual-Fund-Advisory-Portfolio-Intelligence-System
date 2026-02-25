@@ -21,6 +21,11 @@ def render_sip_calculator_widget():
     invested = sip_amount * 12 * years
     wealth_gained = fv - invested
 
-    st.info(
-        f"**Total Invested:** ₹{invested:,.2f} | **Wealth Gained:** ₹{wealth_gained:,.2f} | **Total Value:** ₹{fv:,.2f}"
-    )
+    st.markdown("<br>", unsafe_allow_html=True)
+    res1, res2, res3 = st.columns(3)
+    with res1:
+        st.metric("Total Invested", f"₹{invested:,.0f}")
+    with res2:
+        st.metric("Wealth Gained", f"₹{wealth_gained:,.0f}")
+    with res3:
+        st.metric("Total Future Value", f"₹{fv:,.0f}")

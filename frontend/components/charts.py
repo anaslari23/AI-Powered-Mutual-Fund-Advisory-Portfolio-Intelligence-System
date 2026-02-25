@@ -8,8 +8,18 @@ def render_allocation_chart(allocation_dict: dict):
     labels = list(allocation_dict.keys())
     values = list(allocation_dict.values())
 
-    fig = px.pie(names=labels, values=values, hole=0.4, title="Asset Portfolio Layout")
-    fig.update_traces(textinfo="percent+label", hoverinfo="label+percent")
+    fig = px.pie(
+        names=labels,
+        values=values,
+        hole=0.5,
+        title="Optimized Asset Portfolio",
+        template="plotly_dark",
+        color_discrete_sequence=px.colors.sequential.Tealgrn,
+    )
+    fig.update_traces(
+        textinfo="percent+label", hoverinfo="label+percent", textfont_size=14
+    )
+    fig.update_layout(margin=dict(t=40, b=0, l=0, r=0), showlegend=False)
     st.plotly_chart(fig, use_container_width=True)
 
 
@@ -45,9 +55,11 @@ def render_projection_chart(
     )
 
     fig.update_layout(
-        title="Wealth Projection Over Time",
+        template="plotly_dark",
+        margin=dict(t=40, b=0, l=0, r=0),
         xaxis_title="Years",
         yaxis_title="Corpus Value (₹)",
         hovermode="x unified",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
     )
     st.plotly_chart(fig, use_container_width=True)
