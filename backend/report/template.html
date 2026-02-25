@@ -140,7 +140,8 @@
     <div class="section">
         <h2>5. Existing Portfolio Health</h2>
         <p><strong>Total Corpus:</strong> ₹{{ "{:,.2f}".format(portfolio.total_corpus) }} &nbsp;&nbsp;|&nbsp;&nbsp;
-            <strong>Diversification Score:</strong> {{ portfolio.diversification_score }} / 10
+            <strong>Diversification Score:</strong> {{ portfolio.diversification_score }} / 10 &nbsp;&nbsp;|&nbsp;&nbsp;
+            <strong>Risk Exposure:</strong> {{ portfolio.risk_exposure }}
         </p>
 
         <h3>Existing Asset Breakdown</h3>
@@ -210,7 +211,42 @@
     </div>
 
     <div class="section">
-        <h2>8. Monte Carlo Simulation</h2>
+        <h2>8. Scenario Projections</h2>
+
+        <h3>SIP Projection Timeline</h3>
+        <p>Future value of current portfolio + monthly savings assuming a base 12% annualized return.</p>
+        <table class="data-table">
+            <tr>
+                <th>Timeline</th>
+                <th>Projected Future Value</th>
+            </tr>
+            {% for term, value in sip_projections.items() %}
+            <tr>
+                <td>{{ term }}</td>
+                <td>₹{{ "{:,.2f}".format(value) }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+
+        <h3>Expected Returns (Goal Horizon)</h3>
+        <p>Future Corpus value extrapolated over the course of your primary Retirement goal timeline under different
+            market conditions.</p>
+        <table class="data-table">
+            <tr>
+                <th>Market Scenario</th>
+                <th>Projected Value</th>
+            </tr>
+            {% for scenario, value in expected_returns.items() %}
+            <tr>
+                <td>{{ scenario }}</td>
+                <td>₹{{ "{:,.2f}".format(value) }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>9. Monte Carlo Simulation</h2>
         <p>Simulating 1,000 potential market scenarios assuming normal distribution around expected returns, the
             probability of achieving your primary retirement corpus based on your current savings capacity is <strong>{{
                 monte_carlo_prob }}%</strong>.</p>

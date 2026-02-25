@@ -12,6 +12,8 @@ def generate_financial_report(
     portfolio_data: dict,
     recommended_funds: list,
     monte_carlo_prob: float,
+    sip_projections: dict = None,
+    expected_returns: dict = None,
     output_path: str = "report.pdf",
 ):
     """
@@ -38,6 +40,8 @@ def generate_financial_report(
         portfolio=portfolio_data,
         funds=recommended_funds,
         monte_carlo_prob=monte_carlo_prob,
+        sip_projections=sip_projections or {},
+        expected_returns=expected_returns or {},
         disclaimer=disclaimer_text,
     )
 

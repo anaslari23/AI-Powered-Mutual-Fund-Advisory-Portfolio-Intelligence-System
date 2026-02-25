@@ -8,7 +8,8 @@ def analyze_portfolio(
     existing_mutual_funds: float,
 ) -> Dict[str, Any]:
     """
-    Analyzes the existing asset distribution and generates a diversification score.
+    Analyzes the existing asset distribution
+    and generates a diversification score.
     """
     total_corpus = (
         existing_fd + existing_savings + existing_gold + existing_mutual_funds
@@ -37,13 +38,15 @@ def analyze_portfolio(
     if breakdown["Savings / Cash"] > 20:
         score -= 2
         insights.append(
-            "High cash drag. Consider moving excess savings to liquid funds or short-term debt."
+            "High cash drag. Consider moving excess savings"
+            " to liquid funds or short-term debt."
         )
 
     if breakdown["Mutual Funds / Equity"] < 20:
         score -= 2
         insights.append(
-            "Low equity exposure limits long-term wealth creation. Increase SIPs in equity funds."
+            "Low equity exposure limits long-term wealth creation."
+            " Increase SIPs in equity funds."
         )
 
     if breakdown["Gold"] > 15:
@@ -61,9 +64,19 @@ def analyze_portfolio(
     if score == 10:
         insights.append("Your existing portfolio is well-diversified!")
 
+    # Calculate Risk Exposure (Low, Moderate, High)
+    equity_exposure = breakdown["Mutual Funds / Equity"]
+    if equity_exposure < 30:
+        risk_exposure = "Conservative (Low Equity)"
+    elif equity_exposure <= 60:
+        risk_exposure = "Moderate (Balanced Equity)"
+    else:
+        risk_exposure = "Aggressive (High Equity)"
+
     return {
         "total_corpus": total_corpus,
         "diversification_score": max(0, score),
+        "risk_exposure": risk_exposure,
         "insights": insights,
         "breakdown": breakdown,
     }

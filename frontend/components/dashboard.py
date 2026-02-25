@@ -7,10 +7,14 @@ from backend.engines.goal_engine import (
 from backend.engines.allocation_engine import get_asset_allocation
 from backend.engines.monte_carlo_engine import run_monte_carlo_simulation
 from backend.engines.portfolio_engine import analyze_portfolio
+from backend.engines.projection_engine import generate_projection_table
 from backend.engines.recommendation_engine import suggest_mutual_funds
 from backend.report.pdf_generator import generate_financial_report
 from frontend.components.risk_meter import render_risk_meter
-from frontend.components.charts import render_allocation_chart, render_projection_chart
+from frontend.components.charts import (
+    render_allocation_chart,
+    render_projection_chart,
+)
 from frontend.components.sip_calculator_widget import render_sip_calculator_widget
 
 
@@ -55,6 +59,7 @@ def render_dashboard(client_data: dict):
             "Diversification Score",
             f"{portfolio_analysis['diversification_score']} / 10",
         )
+        st.metric("Risk Exposure", portfolio_analysis["risk_exposure"])
 
     with col_p2:
         st.write("**Actionable Insights:**")
@@ -71,7 +76,8 @@ def render_dashboard(client_data: dict):
     st.markdown("---")
     st.subheader("💡 Recommended Mutual Funds")
     st.caption(
-        "AI curated funds based on your Risk Profile and Target Allocation Phase (India - 2026)"
+        "AI curated funds based on your Risk Profile"
+        " and Target Allocation Phase (India - 2026)"
     )
 
     recommended_funds = suggest_mutual_funds(allocation["allocation"])
@@ -145,15 +151,18 @@ def render_dashboard(client_data: dict):
 
     if probability > 80:
         st.success(
-            f"**{probability}%** probability of achieving your retirement corpus! You are on a highly secure path."
+            f"**{probability}%** probability of achieving your corpus! "
+            "You are on a highly secure path."
         )
     elif probability > 50:
         st.warning(
-            f"**{probability}%** probability of achieving your retirement corpus. Consider increasing your SIP for more certainty."
+            f"**{probability}%** probability of achieving your corpus. "
+            "Consider increasing your SIP for more certainty."
         )
     else:
         st.error(
-            f"**{probability}%** probability of achieving your retirement corpus. A strategy adjustment is highly recommended."
+            f"**{probability}%** probability of achieving your corpus. "
+            "A strategy adjustment is highly recommended."
         )
 
     # SIP Calculator Widget
@@ -167,6 +176,30 @@ def render_dashboard(client_data: dict):
 
     if st.button("Generate Detailed PDF Report"):
         with st.spinner("Generating proposal..."):
+            # Module 5: Prepare SIP Projections (5, 10, 20 Years) at 12%
+            sip_amount = client_data["monthly_savings"]
+            initial = client_data["existing_corpus"]
+
+            sip_projections = {}
+            for y in [5, 10, 20]:
+                df = generate_projection_table(initial, sip_amount, 0.12, y)
+                sip_projections[f"{y} Years"] = df.iloc[-1]["total_value"]
+
+            # Module 5: Prepare Expected Returns Scenarios
+            # Using the retirement timeframe for this module's requirement
+            years = ret_result["years_to_goal"]
+            expected_returns = {
+                "Conservative (8%)": generate_projection_table(
+                    initial, sip_amount, 0.08, years
+                ).iloc[-1]["total_value"],
+                "Moderate (12%)": generate_projection_table(
+                    initial, sip_amount, 0.12, years
+                ).iloc[-1]["total_value"],
+                "Aggressive (15%)": generate_projection_table(
+                    initial, sip_amount, 0.15, years
+                ).iloc[-1]["total_value"],
+            }
+
             pdf_path = generate_financial_report(
                 client_data=client_data,
                 risk_data=risk_profile,
@@ -176,6 +209,8 @@ def render_dashboard(client_data: dict):
                 portfolio_data=portfolio_analysis,
                 recommended_funds=recommended_funds,
                 monte_carlo_prob=probability,
+                sip_projections=sip_projections,
+                expected_returns=expected_returns,
             )
             with open(pdf_path, "rb") as pdf_file:
                 pdf_bytes = pdf_file.read()
