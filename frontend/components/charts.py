@@ -24,7 +24,10 @@ def render_allocation_chart(allocation_dict: dict):
 
 
 def render_projection_chart(
-    initial_investment: float, monthly_sip: float, annual_return_rate: float, years: int
+    initial_investment: float,
+    monthly_sip: float,
+    annual_return_rate: float,
+    years: int,
 ):
     if years <= 0:
         st.warning("Projection years must be > 0.")
@@ -42,6 +45,7 @@ def render_projection_chart(
             mode="lines",
             fill="tozeroy",
             name="Amount Invested",
+            hovertemplate="<b>Amount Invested:</b> ₹%{y:,.2f}<extra></extra>",
         )
     )
     fig.add_trace(
@@ -51,6 +55,7 @@ def render_projection_chart(
             mode="lines",
             fill="tonexty",
             name="Total Value",
+            hovertemplate="<b>Total Value:</b> ₹%{y:,.2f}<extra></extra>",
         )
     )
 
@@ -59,6 +64,7 @@ def render_projection_chart(
         margin=dict(t=40, b=0, l=0, r=0),
         xaxis_title="Years",
         yaxis_title="Corpus Value (₹)",
+        yaxis=dict(tickprefix="₹", tickformat=",.2f"),
         hovermode="x unified",
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
     )
