@@ -33,6 +33,7 @@ def render_dashboard(client_data: dict):
         render_risk_meter(risk_profile["score"])
 
     # Asset Allocation
+    allocation = get_asset_allocation(risk_profile["score"])
     st.markdown("---")
     st.subheader("📊 Quantum Asset Allocation")
     render_allocation_chart(allocation["allocation"])
