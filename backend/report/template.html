@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Financial Action Plan</title>
+    <style>
+        body { font-family: 'Helvetica', sans-serif; color: #333; line-height: 1.6; padding: 20px; }
+        h1 { color: #0d47a1; text-align: center; border-bottom: 2px solid #0d47a1; padding-bottom: 10px; }
+        h2 { color: #1565c0; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 30px; }
+        .section { margin-bottom: 20px; }
+        .data-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .data-table th, .data-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        .data-table th { background-color: #f5f5f5; font-weight: bold; }
+        .disclaimer { font-size: 10px; color: #777; margin-top: 50px; text-align: justify; border-top: 1px solid #ddd; padding-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <h1>Financial Intelligence Report</h1>
+    
+    <div class="section">
+        <h2>1. Executive Summary</h2>
+        <p>This report provides a comprehensive goal-oriented financial plan based on your current profile, savings capacity, and risk appetite.</p>
+    </div>
+
+    <div class="section">
+        <h2>2. Client Profile</h2>
+        <table class="data-table">
+            <tr><th>Age</th><td>{{ client.age }}</td></tr>
+            <tr><th>Dependents</th><td>{{ client.dependents }}</td></tr>
+            <tr><th>Monthly Income</th><td>₹{{ "{:,.2f}".format(client.monthly_income) }}</td></tr>
+            <tr><th>Monthly Savings Capacity</th><td>₹{{ "{:,.2f}".format(client.monthly_savings) }}</td></tr>
+            <tr><th>Behavioral Trait</th><td>{{ client.behavior }}</td></tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>3. Risk Score Explanation</h2>
+        <p><strong>Score:</strong> {{ risk.score }} / 10 &nbsp;&nbsp;|&nbsp;&nbsp; <strong>Category:</strong> {{ risk.category }}</p>
+        <table class="data-table">
+            <tr><th>Factor</th><th>Contribution to Score</th></tr>
+            <tr><td>Age</td><td>{{ risk.explanation.age_contribution }}</td></tr>
+            <tr><td>Dependents</td><td>{{ risk.explanation.dependents_contribution }}</td></tr>
+            <tr><td>Income Stability</td><td>{{ risk.explanation.income_stability_contribution }}</td></tr>
+            <tr><td>Behavioral Stability</td><td>{{ risk.explanation.behavioral_contribution }}</td></tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>4. Goal Planning Breakdown</h2>
+        
+        <h3>Retirement Goal</h3>
+        <p>Years to Goal: {{ retirement.years_to_goal }}</p>
+        <p>Required Future Corpus: ₹{{ "{:,.2f}".format(retirement.future_corpus) }}</p>
+        <p>Required Monthly SIP: ₹{{ "{:,.2f}".format(retirement.required_sip) }}</p>
+
+        <h3>Child Education Goal</h3>
+        <p>Years to Goal: {{ education.years_to_goal }}</p>
+        <p>Required Future Corpus: ₹{{ "{:,.2f}".format(education.future_corpus) }}</p>
+        <p>Required Monthly SIP: ₹{{ "{:,.2f}".format(education.required_sip) }}</p>
+    </div>
+
+    <div class="section">
+        <h2>5. Asset Allocation Strategy</h2>
+        <p>Based on your <strong>{{ risk.category }}</strong> risk profile, here is the recommended portfolio allocation:</p>
+        <table class="data-table">
+            <tr><th>Asset Class</th><th>Allocation (%)</th></tr>
+            {% for asset, percent in allocation.allocation.items() %}
+            <tr><td>{{ asset }}</td><td>{{ percent }}%</td></tr>
+            {% endfor %}
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>6. Monte Carlo Simulation</h2>
+        <p>Simulating 1,000 potential market scenarios assuming normal distribution around expected returns, the probability of achieving your primary retirement corpus based on your current savings capacity is <strong>{{ monte_carlo_prob }}%</strong>.</p>
+    </div>
+
+    <div class="disclaimer">
+        <h2>Disclaimer</h2>
+        <p>{{ disclaimer }}</p>
+    </div>
+
+</body>
+</html>
