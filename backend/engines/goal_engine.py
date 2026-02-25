@@ -8,7 +8,7 @@ def calculate_retirement_goal(
 ) -> Dict[str, Any]:
     """
     Calculate Retirement Corpus and Required SIP.
-    Assumes retirement age = 60, Inflation = 6%.
+    Assumes retirement age = 60, Indian Inflation (2026 Outlook) = 6.5%.
     Assumes corpus is 25x the first year's annual expense at retirement.
     """
     retirement_age = 60
@@ -22,7 +22,7 @@ def calculate_retirement_goal(
             "required_sip": 0.0,
         }
 
-    inflation_rate = 0.06
+    inflation_rate = 0.065
     # Monthly expense at age 60
     future_monthly_expense = calculate_future_value(
         current_monthly_expense, inflation_rate, years_to_goal
@@ -48,7 +48,7 @@ def calculate_child_education_goal(
 ) -> Dict[str, Any]:
     """
     Calculate Child Education Corpus and Required SIP.
-    Assumes Inflation = 8%.
+    Assumes Indian Education Inflation (2026 Outlook) = 9%.
     """
     if years_to_goal <= 0:
         return {
@@ -58,7 +58,7 @@ def calculate_child_education_goal(
             "required_sip": 0.0,
         }
 
-    inflation_rate = 0.08
+    inflation_rate = 0.09
     future_corpus = calculate_future_value(present_cost, inflation_rate, years_to_goal)
 
     required_sip = calculate_required_sip(

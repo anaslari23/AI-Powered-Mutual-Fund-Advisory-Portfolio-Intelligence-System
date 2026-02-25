@@ -10,7 +10,7 @@ def render_sip_calculator_widget():
         )
     with col2:
         return_rate = st.slider(
-            "Expected Return (%)", min_value=5, max_value=20, value=12, step=1
+            "Expected Return (%)", min_value=5, max_value=25, value=13, step=1
         )
     with col3:
         years = st.slider(

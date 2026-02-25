@@ -45,7 +45,7 @@ def render_dashboard(client_data: dict):
 
     ret_data = client_data["goals"]["retirement"]
     ret_result = calculate_retirement_goal(
-        client_data["age"], ret_data["expense"], expected_return_rate=0.12
+        client_data["age"], ret_data["expense"], expected_return_rate=0.13
     )
 
     with col1:
@@ -55,7 +55,7 @@ def render_dashboard(client_data: dict):
 
     edu_data = client_data["goals"]["education"]
     edu_result = calculate_child_education_goal(
-        edu_data["cost"], edu_data["years"], expected_return_rate=0.12
+        edu_data["cost"], edu_data["years"], expected_return_rate=0.13
     )
 
     with col2:
@@ -67,7 +67,7 @@ def render_dashboard(client_data: dict):
     st.markdown("---")
     st.subheader("📈 Wealth Projection Timeline")
     render_projection_chart(
-        0, client_data["monthly_savings"], 0.12, ret_result["years_to_goal"]
+        0, client_data["monthly_savings"], 0.13, ret_result["years_to_goal"]
     )
 
     # Monte Carlo Simulation
@@ -82,7 +82,7 @@ def render_dashboard(client_data: dict):
         monthly_sip=client_data["monthly_savings"],
         years=ret_result["years_to_goal"],
         target_corpus=ret_result["future_corpus"],
-        expected_annual_return=0.12,
+        expected_annual_return=0.13,
         annual_volatility=0.15,
     )
 
