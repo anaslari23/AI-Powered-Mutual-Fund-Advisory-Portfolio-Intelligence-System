@@ -140,7 +140,8 @@
     <div class="section">
         <h2>5. Existing Portfolio Health</h2>
         <p><strong>Total Corpus:</strong> ₹{{ "{:,.2f}".format(portfolio.total_corpus) }} &nbsp;&nbsp;|&nbsp;&nbsp;
-            <strong>Diversification Score:</strong> {{ portfolio.diversification_score }} / 10</p>
+            <strong>Diversification Score:</strong> {{ portfolio.diversification_score }} / 10
+        </p>
 
         <h3>Existing Asset Breakdown</h3>
         <table class="data-table">
@@ -200,9 +201,9 @@
                 <td>{{ fund.category }}</td>
                 <td>{{ fund.risk }}</td>
                 <td>{{ fund.allocation_weight }}%</td>
-                <td>{{ fund.1y }}%</td>
-                <td>{{ fund.3y }}%</td>
-                <td>{{ fund.5y }}%</td>
+                <td>{{ fund['1y'] }}%</td>
+                <td>{{ fund['3y'] }}%</td>
+                <td>{{ fund['5y'] }}%</td>
             </tr>
             {% endfor %}
         </table>
