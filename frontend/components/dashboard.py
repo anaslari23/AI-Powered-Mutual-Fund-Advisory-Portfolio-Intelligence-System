@@ -53,13 +53,17 @@ def render_dashboard(client_data: dict):
     col_p1, col_p2 = st.columns([1, 2])
     with col_p1:
         st.metric(
-            "Total Existing Corpus", f"₹{portfolio_analysis['total_corpus']:,.0f}"
+            "Total Existing Corpus",
+            f"₹{portfolio_analysis.get('total_corpus', 0.0):,.0f}",
         )
         st.metric(
             "Diversification Score",
             f"{portfolio_analysis['diversification_score']} / 10",
         )
-        st.metric("Risk Exposure", portfolio_analysis["risk_exposure"])
+        st.metric(
+            "Risk Exposure",
+            portfolio_analysis.get("risk_exposure", "N/A (Update Profile)"),
+        )
 
     with col_p2:
         st.write("**Actionable Insights:**")

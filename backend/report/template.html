@@ -139,9 +139,11 @@
 
     <div class="section">
         <h2>5. Existing Portfolio Health</h2>
-        <p><strong>Total Corpus:</strong> ₹{{ "{:,.2f}".format(portfolio.total_corpus) }} &nbsp;&nbsp;|&nbsp;&nbsp;
-            <strong>Diversification Score:</strong> {{ portfolio.diversification_score }} / 10 &nbsp;&nbsp;|&nbsp;&nbsp;
-            <strong>Risk Exposure:</strong> {{ portfolio.risk_exposure }}
+        <p><strong>Total Corpus:</strong> ₹{{ "{:,.2f}".format(portfolio.get('total_corpus', 0.0)) }}
+            &nbsp;&nbsp;|&nbsp;&nbsp;
+            <strong>Diversification Score:</strong> {{ portfolio.get('diversification_score', 0) }} / 10
+            &nbsp;&nbsp;|&nbsp;&nbsp;
+            <strong>Risk Exposure:</strong> {{ portfolio.get('risk_exposure', 'N/A (Update Profile)') }}
         </p>
 
         <h3>Existing Asset Breakdown</h3>
