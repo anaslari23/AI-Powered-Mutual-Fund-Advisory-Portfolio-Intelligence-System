@@ -25,7 +25,11 @@ def render_input_form():
             )
         with col4:
             monthly_savings = st.number_input(
-                "Monthly Savings Capacity", min_value=0.0, value=40000.0, step=5000.0
+                "Monthly Savings Capacity",
+                min_value=0.0,
+                max_value=float(monthly_income),
+                value=min(40000.0, float(monthly_income)),
+                step=5000.0,
             )
 
         st.subheader("Existing Portfolio Breakdown (₹)")
