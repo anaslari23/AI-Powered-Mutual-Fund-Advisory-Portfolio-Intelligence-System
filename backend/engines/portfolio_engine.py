@@ -19,6 +19,7 @@ def analyze_portfolio(
         return {
             "total_corpus": 0.0,
             "diversification_score": 0,
+            "risk_exposure": "N/A (No Investments)",
             "insights": ["Start investing to build a portfolio."],
             "breakdown": {},
         }
