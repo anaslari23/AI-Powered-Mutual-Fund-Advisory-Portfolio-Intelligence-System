@@ -5,13 +5,34 @@ def render_input_form():
     """Renders the client profile and goals input form."""
     with st.form("client_form"):
         st.subheader("Personal Details")
-        age = st.number_input("Age", min_value=18, max_value=100, value=30)
-        dependents = st.number_input("Dependents", min_value=0, max_value=10, value=0)
+        col1, col2 = st.columns(2)
+        with col1:
+            age = st.number_input("Current Age", min_value=18, max_value=100, value=30)
+            marital_status = st.selectbox("Marital Status", ["Single", "Married"])
+        with col2:
+            dependents = st.number_input(
+                "Dependents", min_value=0, max_value=10, value=0
+            )
+            target_retirement_age = st.number_input(
+                "Target Retirement Age", min_value=35, max_value=80, value=60
+            )
 
-        st.subheader("Financial Details")
-        monthly_income = st.number_input(
-            "Monthly Income", min_value=0.0, value=100000.0, step=10000.0
-        )
+        st.subheader("Financial Details (₹)")
+        col3, col4 = st.columns(2)
+        with col3:
+            monthly_income = st.number_input(
+                "Monthly Net Income", min_value=0.0, value=150000.0, step=10000.0
+            )
+            existing_corpus = st.number_input(
+                "Existing Invested Corpus (Mutual Funds, Equity, EPF)",
+                min_value=0.0,
+                value=500000.0,
+                step=50000.0,
+            )
+        with col4:
+            monthly_savings = st.number_input(
+                "Monthly Savings Capacity", min_value=0.0, value=40000.0, step=5000.0
+            )
         monthly_savings = st.number_input(
             "Monthly Savings Capacity", min_value=0.0, value=30000.0, step=5000.0
         )
@@ -47,8 +68,11 @@ def render_input_form():
                 st.session_state.client_data = {
                     "age": age,
                     "dependents": dependents,
+                    "marital_status": marital_status,
+                    "target_retirement_age": target_retirement_age,
                     "monthly_income": monthly_income,
                     "monthly_savings": monthly_savings,
+                    "existing_corpus": existing_corpus,
                     "behavior": behavior_traits,
                     "goals": {
                         "retirement": {"expense": retirement_expense},

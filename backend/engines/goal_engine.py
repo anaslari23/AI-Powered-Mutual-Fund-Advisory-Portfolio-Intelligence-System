@@ -4,14 +4,17 @@ from typing import Dict, Any
 
 
 def calculate_retirement_goal(
-    current_age: int, current_monthly_expense: float, expected_return_rate: float
+    current_age: int,
+    current_monthly_expense: float,
+    expected_return_rate: float,
+    retirement_age: int = 60,
+    existing_corpus: float = 0.0,
 ) -> Dict[str, Any]:
     """
     Calculate Retirement Corpus and Required SIP.
-    Assumes retirement age = 60, Indian Inflation (2026 Outlook) = 6.5%.
-    Assumes corpus is 25x the first year's annual expense at retirement.
+    Assumes Indian Inflation (2026 Outlook) = 6.5%.
+    Factors in existing investment corpus and target retirement age.
     """
-    retirement_age = 60
     years_to_goal = retirement_age - current_age
 
     if years_to_goal <= 0:
@@ -29,16 +32,25 @@ def calculate_retirement_goal(
     )
 
     # Corpus rule of thumb: 25 * Annual Expense at retirement
-    future_corpus = future_monthly_expense * 12 * 25
+    total_future_corpus = future_monthly_expense * 12 * 25
+
+    # Growth of existing corpus until retirement
+    fv_existing_corpus = existing_corpus * ((1 + expected_return_rate) ** years_to_goal)
+
+    # Calculate shortfall
+    shortfall = max(0.0, total_future_corpus - fv_existing_corpus)
 
     required_sip = calculate_required_sip(
-        future_corpus, expected_return_rate, years_to_goal
+        shortfall, expected_return_rate, years_to_goal
     )
 
     return {
         "goal_name": "Retirement",
         "years_to_goal": years_to_goal,
-        "future_corpus": round(future_corpus, 2),
+        "total_future_corpus": round(total_future_corpus, 2),
+        "fv_existing_corpus": round(fv_existing_corpus, 2),
+        "shortfall_corpus": round(shortfall, 2),
+        "future_corpus": round(total_future_corpus, 2),  # Legacy key mapping
         "required_sip": round(required_sip, 2),
     }
 
