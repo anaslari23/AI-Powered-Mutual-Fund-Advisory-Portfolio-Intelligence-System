@@ -8,6 +8,7 @@ from backend.engines.allocation_engine import get_asset_allocation
 from backend.engines.monte_carlo_engine import run_monte_carlo_simulation
 from backend.engines.portfolio_engine import analyze_portfolio
 from backend.engines.recommendation_engine import suggest_mutual_funds
+from backend.report.pdf_generator import generate_financial_report
 from frontend.components.risk_meter import render_risk_meter
 from frontend.components.charts import render_allocation_chart, render_projection_chart
 from frontend.components.sip_calculator_widget import render_sip_calculator_widget
@@ -159,3 +160,28 @@ def render_dashboard(client_data: dict):
     st.markdown("---")
     st.subheader("🕹️ Interactive Scenario Builder")
     render_sip_calculator_widget()
+
+    # Generate PDF Report
+    st.markdown("---")
+    st.subheader("📄 Client Investment Proposal")
+
+    if st.button("Generate Detailed PDF Report"):
+        with st.spinner("Generating proposal..."):
+            pdf_path = generate_financial_report(
+                client_data=client_data,
+                risk_data=risk_profile,
+                retirement_data=ret_result,
+                education_data=edu_result,
+                allocation_data=allocation,
+                portfolio_data=portfolio_analysis,
+                recommended_funds=recommended_funds,
+                monte_carlo_prob=probability,
+            )
+            with open(pdf_path, "rb") as pdf_file:
+                pdf_bytes = pdf_file.read()
+                st.download_button(
+                    label="Download Investment Proposal (PDF)",
+                    data=pdf_bytes,
+                    file_name="Investment_Proposal.pdf",
+                    mime="application/pdf",
+                )

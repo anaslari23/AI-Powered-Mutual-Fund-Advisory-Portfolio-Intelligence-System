@@ -9,6 +9,8 @@ def generate_financial_report(
     retirement_data: dict,
     education_data: dict,
     allocation_data: dict,
+    portfolio_data: dict,
+    recommended_funds: list,
     monte_carlo_prob: float,
     output_path: str = "report.pdf",
 ):
@@ -33,9 +35,11 @@ def generate_financial_report(
         retirement=retirement_data,
         education=education_data,
         allocation=allocation_data,
+        portfolio=portfolio_data,
+        funds=recommended_funds,
         monte_carlo_prob=monte_carlo_prob,
         disclaimer=disclaimer_text,
     )
 
-    pdf = HTML(string=html_out).write_pdf(output_path)
+    HTML(string=html_out).write_pdf(output_path)
     return output_path
