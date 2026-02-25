@@ -23,19 +23,27 @@ def render_input_form():
             monthly_income = st.number_input(
                 "Monthly Net Income", min_value=0.0, value=150000.0, step=10000.0
             )
-            existing_corpus = st.number_input(
-                "Existing Invested Corpus (Mutual Funds, Equity, EPF)",
-                min_value=0.0,
-                value=500000.0,
-                step=50000.0,
-            )
         with col4:
             monthly_savings = st.number_input(
                 "Monthly Savings Capacity", min_value=0.0, value=40000.0, step=5000.0
             )
-        monthly_savings = st.number_input(
-            "Monthly Savings Capacity", min_value=0.0, value=30000.0, step=5000.0
-        )
+
+        st.subheader("Existing Portfolio Breakdown (₹)")
+        col5, col6 = st.columns(2)
+        with col5:
+            existing_fd = st.number_input(
+                "Fixed Deposits / Bonds", min_value=0.0, value=500000.0, step=50000.0
+            )
+            existing_savings = st.number_input(
+                "Savings Account / Cash", min_value=0.0, value=200000.0, step=50000.0
+            )
+        with col6:
+            existing_gold = st.number_input(
+                "Gold Investments", min_value=0.0, value=100000.0, step=50000.0
+            )
+            existing_mutual_funds = st.number_input(
+                "Mutual Funds / Equity", min_value=0.0, value=100000.0, step=50000.0
+            )
 
         st.subheader("Behavioral Traits")
         behavior_traits = st.selectbox(
@@ -72,7 +80,14 @@ def render_input_form():
                     "target_retirement_age": target_retirement_age,
                     "monthly_income": monthly_income,
                     "monthly_savings": monthly_savings,
-                    "existing_corpus": existing_corpus,
+                    "existing_fd": existing_fd,
+                    "existing_savings": existing_savings,
+                    "existing_gold": existing_gold,
+                    "existing_mutual_funds": existing_mutual_funds,
+                    "existing_corpus": existing_fd
+                    + existing_savings
+                    + existing_gold
+                    + existing_mutual_funds,  # Computed Total
                     "behavior": behavior_traits,
                     "goals": {
                         "retirement": {"expense": retirement_expense},
