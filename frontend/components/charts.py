@@ -20,7 +20,7 @@ def render_allocation_chart(allocation_dict: dict):
         textinfo="percent+label", hoverinfo="label+percent", textfont_size=14
     )
     fig.update_layout(margin=dict(t=40, b=0, l=0, r=0), showlegend=False)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 
 def render_projection_chart(
@@ -68,4 +68,4 @@ def render_projection_chart(
         hovermode="x unified",
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")

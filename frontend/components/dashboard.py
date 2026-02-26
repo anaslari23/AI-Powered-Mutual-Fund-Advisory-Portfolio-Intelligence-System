@@ -84,17 +84,37 @@ def render_dashboard(client_data: dict):
         " and Target Allocation Phase (India - 2026)"
     )
 
-    recommended_funds = suggest_mutual_funds(allocation["allocation"])
+    recommended_funds, is_live_data = suggest_mutual_funds(
+        allocation["allocation"], risk_profile["category"]
+    )
+
+    if is_live_data:
+        st.success("✅ **Live NAV data from AMFI**")
+        st.info(
+            "📈 **Performance derived from high-liquidity ETF market proxy Models**"
+        )
+    else:
+        st.warning(
+            "⚠️ **Live data momentarily unavailable. Using internal fallback dataset.**"
+        )
 
     for fund in recommended_funds:
         with st.expander(
             f"{fund['name']} ({fund['allocation_weight']}%) - {fund['category']}"
         ):
             st.write(f"**Risk Level:** {fund['risk']}")
-            col_f1, col_f2, col_f3 = st.columns(3)
-            col_f1.metric("1Y Return", f"{fund['1y']}%")
-            col_f2.metric("3Y Return", f"{fund['3y']}%")
-            col_f3.metric("5Y Return", f"{fund['5y']}%")
+
+            col_f0, col_f1, col_f2 = st.columns(3)
+            col_f0.metric(f"NAV ({fund['date']})", f"₹{fund['nav']:.2f}")
+            col_f1.metric("Sharpe Ratio", f"{fund['sharpe']:.2f}")
+            col_f2.metric("Annual Volatility", f"{fund['volatility']:.2f}%")
+
+            st.divider()
+            st.write("**Historical ETF Proxy Performance**")
+            col_f3, col_f4, col_f5 = st.columns(3)
+            col_f3.metric("1Y Return", f"{fund['1y']}%")
+            col_f4.metric("3Y Return", f"{fund['3y']}%")
+            col_f5.metric("5Y Return", f"{fund['5y']}%")
 
     # Goals Analysis
     st.markdown("---")

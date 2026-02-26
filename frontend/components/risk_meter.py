@@ -30,4 +30,4 @@ def render_risk_meter(score: float):
         paper_bgcolor="rgba(0,0,0,0)",
         font={"color": "white"},
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
