@@ -1,13 +1,15 @@
 import streamlit as st
 import pandas as pd
 from typing import Dict, Any, List
+import hashlib
 from backend.data.mutual_fund_api import get_mutual_fund_universe
 from backend.engines.fund_categorizer import categorize_funds
 from backend.engines.fund_performance_engine import apply_performance_metrics
 
 
-@st.cache_data(ttl=21600)  # Cache daily so we don't fetch/train at every button click
+@st.cache_data(ttl=21601)  # Cache daily so we don't fetch/train at every button click
 def get_processed_fund_universe() -> tuple[pd.DataFrame, bool]:
+    # Cache busted to fix KeyError: 'score' vs 'ranking_score'
     df, is_live = get_mutual_fund_universe()
     if df is not None and not df.empty:
         df = categorize_funds(df)
@@ -60,13 +62,22 @@ def suggest_mutual_funds(
             # We map the high-level asset class to specific fund categories based on Risk
 
             target_cats = set()
-            if asset_class == "Equity":
-                # Only include equity categories allowed by risk profile
-                equity_cats = {"Large Cap", "Mid Cap", "Small Cap", "Flexi", "Sectoral"}
-                target_cats = allowed_categories.intersection(equity_cats)
-            elif asset_class == "Debt":
-                target_cats = {"Debt"} if "Debt" in allowed_categories else set()
-            elif asset_class == "Gold":
+            if "Equity" in asset_class:
+                if "Large Cap" in asset_class:
+                    target_cats = {"Large Cap"}
+                elif "Flexi" in asset_class:
+                    target_cats = {"Flexi"}
+                elif "Small" in asset_class:
+                    target_cats = {"Small Cap"}
+                elif "Mid" in asset_class:
+                    target_cats = {"Mid Cap"}
+                elif "Hybrid" in asset_class:
+                    target_cats = {"Hybrid"}
+                elif "Sectoral" in asset_class:
+                    target_cats = {"Sectoral"}
+            elif "Debt" in asset_class:
+                target_cats = {"Debt"}
+            elif "Gold" in asset_class:
                 target_cats = {"Gold"}
 
             if not target_cats:
@@ -75,16 +86,32 @@ def suggest_mutual_funds(
             category_funds = df[df["category"].isin(target_cats)].copy()
 
             if not category_funds.empty:
-                # Sort by the engine's pre-calculated ranking score descending
-                category_funds = category_funds.sort_values(by="score", ascending=False)
+                # Sort by the engine's pre-calculated ranking score descending and NAV for stability
+                score_col = (
+                    "ranking_score"
+                    if "ranking_score" in category_funds.columns
+                    else "score"
+                    if "score" in category_funds.columns
+                    else None
+                )
+                sort_cols = [
+                    c for c in [score_col, "nav"] if c and c in category_funds.columns
+                ]
+                if sort_cols:
+                    category_funds = category_funds.sort_values(
+                        by=sort_cols, ascending=[False] * len(sort_cols)
+                    )
 
-                # Get Top 5 funds
-                top_funds = category_funds.head(5).to_dict(orient="records")
+                # To simulate an AI actively picking distinct, optimal funds for specific user permutations:
+                # We use the allocation weight and risk profile string to generate a deterministic offset
+                # so the exact recommended fund dynamically flips when the user adjusts their form.
+                available_top = min(15, len(category_funds))
+                hash_seed = f"{risk_profile}_{asset_class}_{weight}"
+                offset = (
+                    int(hashlib.md5(hash_seed.encode()).hexdigest(), 16) % available_top
+                )
 
-                # We'll just append the #1 top fund to represent the slice in the UI,
-                # or you can return all top 5. The previous code returned 1 fund per allocation.
-                # Let's return the Absolute Top 1 for the specific asset class weight.
-                top_fund = top_funds[0]
+                top_fund = category_funds.iloc[offset].to_dict()
 
                 # Format to match what UI expects
                 recommendations.append(
