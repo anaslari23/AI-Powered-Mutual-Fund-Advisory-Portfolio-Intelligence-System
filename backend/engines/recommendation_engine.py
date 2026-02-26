@@ -7,7 +7,7 @@ from backend.engines.fund_categorizer import categorize_funds
 from backend.engines.fund_performance_engine import apply_performance_metrics
 
 
-@st.cache_data(ttl=21601)
+@st.cache_data(ttl=3600, show_spinner="Processing fund universe...")
 def get_processed_fund_universe() -> tuple[pd.DataFrame, bool]:
     """Fetch, categorize, and score the full mutual fund universe."""
     df, is_live = get_mutual_fund_universe()
