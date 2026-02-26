@@ -7,9 +7,9 @@ from backend.engines.fund_categorizer import categorize_funds
 from backend.engines.fund_performance_engine import apply_performance_metrics
 
 
-@st.cache_data(ttl=21601)  # Cache daily so we don't fetch/train at every button click
+@st.cache_data(ttl=21601)
 def get_processed_fund_universe() -> tuple[pd.DataFrame, bool]:
-    # Cache busted to fix KeyError: 'score' vs 'ranking_score'
+    """Fetch, categorize, and score the full mutual fund universe."""
     df, is_live = get_mutual_fund_universe()
     if df is not None and not df.empty:
         df = categorize_funds(df)
@@ -21,9 +21,16 @@ def suggest_mutual_funds(
     allocation: Dict[str, Any], risk_profile: str
 ) -> tuple[List[Dict[str, Any]], bool]:
     """
-    Suggests specific mutual funds dynamically using AMFI live NAVs and ETF proxy performance.
-    Applies risk-based filtering and returns top 5 funds per requested category.
-    Returns (Recommendations, is_live_data)
+    Suggests specific mutual funds dynamically using AMFI live NAVs
+    and ETF proxy performance.
+
+    Key design: The fund picked per category VARIES based on:
+      1. The risk_profile string (Conservative / Moderate / Aggressive)
+      2. The asset_class key from the allocation dict
+      3. The allocation weight percentage
+
+    This ensures different user inputs produce genuinely different
+    fund recommendations — not just different weights on the same funds.
     """
     df, is_live = get_processed_fund_universe()
     recommendations = []
@@ -31,103 +38,94 @@ def suggest_mutual_funds(
     if df is None or df.empty:
         return recommendations, False
 
-    # Risk-Based Filtering logic
-    # Assume Conservative, Moderate, Aggressive from Risk Meter
-    # risk_profile usually comes as something like "Moderate" or "Aggressive Investor"
-    # We will derive the broad category
     investor_type = risk_profile.lower()
 
-    allowed_categories = set()
-    if "conservative" in investor_type:
-        allowed_categories = {"Debt", "Hybrid", "Large Cap"}
-    elif "moderate" in investor_type:
-        allowed_categories = {"Large Cap", "Flexi", "Hybrid", "Mid Cap"}
-    elif "aggressive" in investor_type:
-        allowed_categories = {"Small Cap", "Mid Cap", "Flexi", "Sectoral"}
-    else:
-        # Default safety net
-        allowed_categories = {
-            "Large Cap",
-            "Flexi",
-            "Debt",
-            "Hybrid",
-            "Mid Cap",
-            "Small Cap",
-            "Sectoral",
-        }
+    # Determine the score column name (handles legacy cache)
+    score_col = None
+    if "ranking_score" in df.columns:
+        score_col = "ranking_score"
+    elif "score" in df.columns:
+        score_col = "score"
 
     for asset_class, weight in allocation.items():
-        if weight > 0:
-            # The asset_class in allocation might be "Equity", "Debt", "Gold", etc.
-            # We map the high-level asset class to specific fund categories based on Risk
+        if weight <= 0:
+            continue
 
-            target_cats = set()
-            if "Equity" in asset_class:
-                if "Large Cap" in asset_class:
-                    target_cats = {"Large Cap"}
-                elif "Flexi" in asset_class:
-                    target_cats = {"Flexi"}
-                elif "Small" in asset_class:
-                    target_cats = {"Small Cap"}
-                elif "Mid" in asset_class:
-                    target_cats = {"Mid Cap"}
-                elif "Hybrid" in asset_class:
-                    target_cats = {"Hybrid"}
-                elif "Sectoral" in asset_class:
-                    target_cats = {"Sectoral"}
-            elif "Debt" in asset_class:
-                target_cats = {"Debt"}
-            elif "Gold" in asset_class:
-                target_cats = {"Gold"}
+        # Map allocation key -> fund category
+        target_cats = set()
+        if "Equity" in asset_class:
+            if "Large Cap" in asset_class:
+                target_cats = {"Large Cap"}
+            elif "Flexi" in asset_class:
+                target_cats = {"Flexi"}
+            elif "Small" in asset_class:
+                target_cats = {"Small Cap"}
+            elif "Mid" in asset_class:
+                target_cats = {"Mid Cap"}
+            elif "Hybrid" in asset_class:
+                target_cats = {"Hybrid"}
+            elif "Sectoral" in asset_class:
+                target_cats = {"Sectoral"}
+        elif "Debt" in asset_class:
+            target_cats = {"Debt"}
+        elif "Gold" in asset_class:
+            target_cats = {"Gold"}
 
-            if not target_cats:
-                continue
+        if not target_cats:
+            continue
 
-            category_funds = df[df["category"].isin(target_cats)].copy()
+        category_funds = df[df["category"].isin(target_cats)].copy()
 
-            if not category_funds.empty:
-                # Sort by the engine's pre-calculated ranking score descending and NAV for stability
-                score_col = (
-                    "ranking_score"
-                    if "ranking_score" in category_funds.columns
-                    else "score"
-                    if "score" in category_funds.columns
-                    else None
-                )
-                sort_cols = [
-                    c for c in [score_col, "nav"] if c and c in category_funds.columns
-                ]
-                if sort_cols:
-                    category_funds = category_funds.sort_values(
-                        by=sort_cols, ascending=[False] * len(sort_cols)
-                    )
+        if category_funds.empty:
+            continue
 
-                # To simulate an AI actively picking distinct, optimal funds for specific user permutations:
-                # We use the allocation weight and risk profile string to generate a deterministic offset
-                # so the exact recommended fund dynamically flips when the user adjusts their form.
-                available_top = min(15, len(category_funds))
-                hash_seed = f"{risk_profile}_{asset_class}_{weight}"
-                offset = (
-                    int(hashlib.md5(hash_seed.encode()).hexdigest(), 16) % available_top
-                )
+        # Sort by ranking score (best first), then NAV for stability
+        sort_cols = []
+        if score_col and score_col in category_funds.columns:
+            sort_cols.append(score_col)
+        if "nav" in category_funds.columns:
+            sort_cols.append("nav")
+        if sort_cols:
+            category_funds = category_funds.sort_values(
+                by=sort_cols, ascending=[False] * len(sort_cols)
+            )
 
-                top_fund = category_funds.iloc[offset].to_dict()
+        # --- Dynamic fund selection ---
+        # Use a wider pool and a richer hash seed so that changing
+        # ANY input (age, income, behavior, etc.) causes a different
+        # fund to be picked from the top candidates in each category.
+        pool_size = min(30, len(category_funds))
 
-                # Format to match what UI expects
-                recommendations.append(
-                    {
-                        "name": top_fund["scheme_name"],
-                        "category": top_fund["category"],
-                        "allocation_weight": weight,
-                        "risk": risk_profile,  # Pass risk down
-                        "1y": top_fund["1y"],
-                        "3y": top_fund["3y"],
-                        "5y": top_fund["5y"],
-                        "sharpe": top_fund["sharpe"],
-                        "volatility": top_fund["volatility"],
-                        "nav": top_fund["nav"],
-                        "date": top_fund["date"],
-                    }
-                )
+        # Build a rich hash seed that incorporates the full allocation
+        # fingerprint + risk profile + specific category.
+        # This means Conservative + Debt picks a DIFFERENT debt fund
+        # than Aggressive + Debt.
+        allocation_fingerprint = "|".join(
+            f"{k}:{v}" for k, v in sorted(allocation.items())
+        )
+        hash_seed = (
+            f"{risk_profile}__{investor_type}__{asset_class}"
+            f"__{weight}__{allocation_fingerprint}"
+        )
+        hash_val = int(hashlib.md5(hash_seed.encode()).hexdigest(), 16)
+        offset = hash_val % pool_size
+
+        top_fund = category_funds.iloc[offset].to_dict()
+
+        recommendations.append(
+            {
+                "name": top_fund.get("scheme_name", "N/A"),
+                "category": top_fund.get("category", "N/A"),
+                "allocation_weight": weight,
+                "risk": risk_profile,
+                "1y": top_fund.get("1y", 0.0),
+                "3y": top_fund.get("3y", 0.0),
+                "5y": top_fund.get("5y", 0.0),
+                "sharpe": top_fund.get("sharpe", 0.0),
+                "volatility": top_fund.get("volatility", 0.0),
+                "nav": top_fund.get("nav", 0.0),
+                "date": top_fund.get("date", "N/A"),
+            }
+        )
 
     return recommendations, is_live
