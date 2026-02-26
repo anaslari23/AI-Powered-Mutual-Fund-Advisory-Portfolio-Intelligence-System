@@ -10,9 +10,8 @@ def get_asset_allocation(risk_score: float) -> Dict[str, Any]:
         category = "Conservative"
         allocation = {
             "Equity - Large Cap": 15,
-            "Equity - Flexi Cap": 5,
-            "Equity - Hybrid": 0,
-            "Debt": 70,
+            "Equity - Hybrid": 15,
+            "Debt": 60,
             "Gold": 10,
         }
     elif 5 <= risk_score <= 7:
@@ -20,16 +19,17 @@ def get_asset_allocation(risk_score: float) -> Dict[str, Any]:
         allocation = {
             "Equity - Large Cap": 30,
             "Equity - Flexi Cap": 20,
-            "Equity - Hybrid": 10,
+            "Equity - Mid Cap": 10,
             "Debt": 30,
             "Gold": 10,
         }
     else:
         category = "Aggressive"
         allocation = {
-            "Equity - Large Cap": 40,
+            "Equity - Small Cap": 20,
+            "Equity - Mid Cap": 20,
             "Equity - Flexi Cap": 30,
-            "Equity - Hybrid": 10,
+            "Equity - Sectoral": 10,
             "Debt": 10,
             "Gold": 10,
         }

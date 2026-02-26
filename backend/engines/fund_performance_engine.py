@@ -59,7 +59,7 @@ def get_category_performance() -> dict:
             if len(prices) < 252:  # Need at least ~1 year of data
                 continue
 
-            current_price = float(prices.iloc[-1])
+            current_price = float(np.ravel(prices.iloc[-1])[0])
 
             # Utility to get price N years ago safely
             def get_historical_price(years_ago: int):
@@ -67,7 +67,7 @@ def get_category_performance() -> dict:
                 closest_date = prices.index.asof(target_date)
                 if pd.isna(closest_date):
                     return None
-                return float(prices.loc[closest_date])
+                return float(np.ravel(prices.loc[closest_date])[0])
 
             p_1y = get_historical_price(1)
             p_3y = get_historical_price(3)
