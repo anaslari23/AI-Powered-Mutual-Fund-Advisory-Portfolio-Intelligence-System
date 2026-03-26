@@ -13,7 +13,8 @@ from datetime import datetime
 from typing import Any, Dict, Optional
 import redis
 
-from ai_agents.config.celery_config import REDIS_URL
+# Get REDIS_URL directly without importing celery_config which requires celery
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
 
 logger = logging.getLogger(__name__)
 

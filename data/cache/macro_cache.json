@@ -2,11 +2,11 @@
   "macro": {
     "cpi_yoy_pct": 6.0,
     "repo_rate_pct": 6.5,
-    "bond_yield_pct": 7.1,
+    "bond_yield_pct": 24.64,
     "inflation_trend": "stable",
     "rate_trend": "stable",
-    "source": "fallback",
-    "fetched_at": "2026-03-24T17:41:23"
+    "source": "partial",
+    "fetched_at": "2026-03-25T18:24:30"
   },
-  "cached_at": "2026-03-24T17:41:23"
+  "cached_at": "2026-03-25T18:24:30"
 }

@@ -102,7 +102,7 @@ with col2:
     if st.session_state.client_data:
         render_dashboard(st.session_state.client_data)
     else:
-        st.info("Please fill the Client Profile form to generate your financial plan.")
+        st.info("Please fill the form")
 
 st.markdown("---")
 with open(os.path.join(os.path.dirname(__file__), "..", "DISCLAIMER.txt"), "r") as f:

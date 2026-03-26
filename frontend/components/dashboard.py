@@ -1,5 +1,6 @@
 import streamlit as st
-from backend.engines.risk_engine import calculate_risk_score
+from backend.engines.risk_engine import compute_risk
+from backend.processors.explainability import explain_risk_full
 from backend.engines.goal_engine import (
     calculate_retirement_goal,
     calculate_child_education_goal,
@@ -43,17 +44,22 @@ if "_ai_scheduler_started" not in st.session_state:
 
 
 def render_dashboard(client_data: dict):
-    # Calculations
-    risk_profile = calculate_risk_score(
-        age=client_data["age"],
-        dependents=client_data["dependents"],
-        behavior=client_data["behavior"],
-        monthly_income=client_data["monthly_income"],
-        monthly_savings=client_data["monthly_savings"],
-    )
-
     # ── NEW: Macro Context Engine ─────────────────────────────────────────────
     macro_context = get_macro_context()
+
+    if macro_context.get("source") == "fallback":
+        st.warning("⚠️ Using fallback macro data")
+    else:
+        st.success("✅ Live macro data")
+
+    # Calculations
+    user_inputs = {
+        "age": client_data["age"],
+        "dependents": client_data["dependents"],
+        "savings": client_data["monthly_savings"] / max(client_data["monthly_income"], 1) * 100,
+        "behavior": 2 if client_data["behavior"].lower() == "moderate" else (1 if client_data["behavior"].lower() == "conservative" else 3)
+    }
+    risk_profile = compute_risk(user_inputs, macro_context)
 
     st.markdown("---")
     st.subheader("Risk Profile Analysis")
@@ -74,6 +80,12 @@ def render_dashboard(client_data: dict):
         for factor in risk_xai["key_factors"]:
             st.markdown(f"- {factor}")
         st.info(f"**Recommendation:** {risk_xai['recommendation']}")
+
+        risk_explanation = explain_risk_full(risk_profile)
+        st.markdown("### 📊 Risk Breakdown")
+        st.json(risk_explanation["factor_breakdown"])
+        st.markdown("### ⚙️ Calculation Formula")
+        st.json(risk_explanation["formula"])
 
     # ── NEW: Macro Environment Card ────────────────────────────────────────────
     macro_fmt = format_macro_summary(macro_context)
@@ -479,3 +491,38 @@ def render_dashboard(client_data: dict):
                     file_name="Investment_Proposal.pdf",
                     mime="application/pdf",
                 )
+
+    # --- Insurance Gap Analysis & Advisor Overrides (non-blocking) ---
+    try:
+        from backend.insurance.gap_analyzer import analyze_gap
+        insurance_gap = analyze_gap(client_data)
+    except Exception:
+        insurance_gap = {"life_gap": 0, "health_gap": 0, "status": "unavailable"}
+
+    st.markdown("### 🛡️ Insurance Gap")
+    try:
+        st.metric("Life Cover Gap", insurance_gap.get("life_gap", 0))
+        st.metric("Health Cover Gap", insurance_gap.get("health_gap", 0))
+    except:
+        st.write("Insurance data unavailable")
+
+    try:
+        from backend.api.advisor_overrides import apply_overrides
+        _current_alloc = allocation if isinstance(allocation, dict) else {}
+        allocation = apply_overrides(_current_alloc, client_data)
+        
+        override_applied = allocation.get("override_applied", False)
+        override_reason = allocation.get("override_reason", "")
+        if override_applied:
+            st.warning(f"Advisor Adjustment: {override_reason}")
+    except Exception:
+        pass
+
+    st.markdown("---")
+    from backend.api.report_generator import generate_full_report
+    if st.button("Download Advanced Report"):
+        generate_full_report(client_data, {
+            "risk": risk_profile,
+            "allocation": allocation,
+            "insurance": insurance_gap
+        })

@@ -4,17 +4,17 @@
     "volatility": "high",
     "inflation_trend": "stable",
     "interest_rate_trend": "stable",
-    "global_sentiment": "positive",
-    "usdinr_pressure": "inr_weakening",
+    "global_sentiment": "negative",
+    "usdinr_pressure": "inr_strengthening",
     "golden_cross": false,
-    "vix_level": 26.73,
+    "vix_level": 24.74,
     "cpi_yoy_pct": 6.0,
     "repo_rate_pct": 6.5,
-    "nifty_price": 22512.65,
-    "nifty_change_pct": -2.6,
-    "usdinr_price": 93.9,
-    "crude_price": 88.13,
+    "nifty_price": 22912.4,
+    "nifty_change_pct": 1.78,
+    "usdinr_price": 93.24,
+    "crude_price": 92.35,
     "signal_source": "partial"
   },
-  "cached_at": "2026-03-24T17:41:23"
+  "cached_at": "2026-03-25T18:24:30"
 }

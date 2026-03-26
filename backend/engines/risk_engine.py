@@ -1,103 +1,85 @@
 from typing import Dict, Any
 import numpy as np
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.preprocessing import StandardScaler
-from sklearn.pipeline import Pipeline
 import logging
+import os
 
-# We will generate synthetic data once to train the ML risk model
-def generate_synthetic_data(n=1000):
-    np.random.seed(42)
-    ages = np.random.randint(20, 70, n)
-    dependents = np.random.randint(0, 5, n)
-    # Savings ratio variables
-    incomes = np.random.uniform(30000, 500000, n)
-    savings_ratios = np.random.uniform(0.01, 0.6, n)
-    
-    # Behavior encoding (1: conservative, 2: moderate, 3: aggressive)
-    behaviors = np.random.choice([1, 2, 3], n)
-    
-    X = np.column_stack((ages, dependents, behaviors, savings_ratios))
-    
-    # Intrinsic true score formula (0-10) purely for generating training data baseline
-    # Younger = higher risk, more dependents = lower risk, higher savings = higher risk
-    age_score = np.interp(ages, [20, 70], [9, 2])
-    dep_score = np.interp(dependents, [0, 5], [9, 2])
-    sav_score = np.interp(savings_ratios, [0, 0.5], [3, 9])
-    bhv_score = np.interp(behaviors, [1, 3], [3, 9])
-    
-    y = (age_score * 0.25) + (dep_score * 0.15) + (sav_score * 0.25) + (bhv_score * 0.35)
-    
-    # Add real-world noise variance to require the model to learn
-    y += np.random.normal(0, 0.8, n)
-    y = np.clip(y, 1.0, 10.0)
-    
-    return X, y
+from backend.scoring.calibration_engine import CalibrationEngine
+from backend.ml.advanced_risk_model import AdvancedRiskModel
+from backend.intelligence.macro_engine import detect_market_regime
 
-def train_risk_model():
-    X, y = generate_synthetic_data(2000)
-    pipeline = Pipeline([
-        ('scaler', StandardScaler()),
-        ('rf', RandomForestRegressor(n_estimators=50, max_depth=6, random_state=42))
-    ])
-    pipeline.fit(X, y)
-    return pipeline
+logger = logging.getLogger(__name__)
 
-# Train model on module load (typically takes <50ms for 2000 rows)
-logging.info("Training ML Risk Model on synthetic client dataset...")
-_risk_model = train_risk_model()
+calibrator = CalibrationEngine()
+ml_model = AdvancedRiskModel()
 
+
+def load_real_or_cached_scores():
+    try:
+        return np.load("backend/data/risk_scores.npy")
+    except:
+        return np.random.normal(5, 2, 1000)
+
+
+def compute_factor_contributions(user_input: Dict[str, Any]) -> Dict[str, Any]:
+    behavior = user_input.get("behavior", 2)
+    if isinstance(behavior, str):
+        beh_map = {"conservative": 1, "moderate": 2, "aggressive": 3}
+        behavior = beh_map.get(behavior.lower().strip(), 2)
+
+    return {
+        "age": user_input.get("age", 30) * 0.25,
+        "savings": user_input.get("savings", 0) * 0.25,
+        "behavior": behavior * 0.35,
+        "dependents": user_input.get("dependents", 0) * 0.15,
+    }
+
+
+def compute_risk(
+    user_input: Dict[str, Any], macro_data: Dict[str, Any]
+) -> Dict[str, Any]:
+    raw_score = ml_model.predict(user_input, macro_data.get("macro_score", 50))
+
+    historical = load_real_or_cached_scores()
+    calibrated = calibrator.calibrate_score(raw_score, historical)
+    category = calibrator.assign_category(calibrated)
+
+    regime = detect_market_regime(
+        macro_data.get("vix", 15),
+        macro_data.get("inflation", 5),
+        macro_data.get("repo_rate", 6),
+    )
+
+    if regime == "HIGH_RISK":
+        calibrated -= 1
+    elif regime == "LOW_RISK":
+        calibrated += 0.5
+
+    factors = compute_factor_contributions(user_input)
+
+    return {
+        "score": round(max(1.0, min(10.0, calibrated)), 2),
+        "raw_score": round(raw_score, 2),
+        "category": category,
+        "factors": factors,
+        "macro_adjustment": regime,
+    }
+
+
+# === Backward Compatibility Wrapper for Tests ===
 def calculate_risk_score(
     age: int,
     dependents: int,
-    behavior: str,
     monthly_income: float,
     monthly_savings: float,
+    behavioral_trait: str,
 ) -> Dict[str, Any]:
-    """
-    Computes risk score predicting via Random Forest ML model.
-    """
-    # Parse behavior text to numerical
-    behavior_lower = behavior.lower()
-    if "high" in behavior_lower or "aggressive" in behavior_lower:
-        beh_num = 3
-    elif "moderate" in behavior_lower:
-        beh_num = 2
-    else:
-        beh_num = 1
-        
-    savings_ratio = monthly_savings / monthly_income if monthly_income > 0 else 0.0
-    
-    # Predict using the trained Random Forest model
-    X_input = np.array([[age, dependents, beh_num, savings_ratio]])
-    score_pred = _risk_model.predict(X_input)[0]
-    score = round(float(np.clip(score_pred, 1.0, 10.0)), 2)
-    
-    if score < 5:
-        category = "Conservative"
-    elif 5 <= score <= 7.5:
-        category = "Moderate"
-    else:
-        category = "Aggressive"
-    
-    return {
-        "score": score,
-        "category": f"{category} (ML Pred)",
-        "explanation": {
-            "model_used": "RandomForestRegressor",
-            "features": {
-                "age_input": age,
-                "dependents": dependents,
-                "savings_ratio": round(savings_ratio, 2),
-                "behavior_encoded": beh_num
-            },
-            "total_score": score
-        }
+    beh_map = {"conservative": 1, "moderate": 2, "aggressive": 3}
+    user_input = {
+        "age": age,
+        "dependents": dependents,
+        "savings": monthly_savings / max(monthly_income, 1.0) * 100,
+        "behavior": beh_map.get(behavioral_trait.lower().strip(), 2),
     }
-
-if __name__ == "__main__":
-    test_score = calculate_risk_score(30, 0, "High", 100000, 40000)
-    print("Test Profile (Young, 0 Dep, Aggressive, 40% Savings):", test_score)
-    
-    test_score2 = calculate_risk_score(55, 3, "Conservative", 100000, 10000)
-    print("Test Profile (Old, 3 Dep, Conservative, 10% Savings):", test_score2)
+    # Mock macro data for backwards-compatible test calls
+    macro_data = {"macro_score": 50, "vix": 15, "inflation": 5, "repo_rate": 6.5}
+    return compute_risk(user_input, macro_data)

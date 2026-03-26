@@ -247,3 +247,17 @@ def explain_portfolio_health(portfolio_data: Dict[str, Any]) -> Dict[str, Any]:
         "narrative": narrative,
         "verdict":   verdict,
     }
+
+
+def explain_risk_full(risk_output):
+    return {
+        "summary": f"Risk Score: {risk_output.get('score', 0)} ({risk_output.get('category', 'Unknown')})",
+        "factor_breakdown": risk_output.get("factors", {}),
+        "macro_impact": f"Adjusted due to {risk_output.get('macro_adjustment', 'NEUTRAL')} market",
+        "formula": {
+            "Savings Ratio": "25%",
+            "Age": "25%",
+            "Behavior": "35%",
+            "Dependents": "15%"
+        }
+    }

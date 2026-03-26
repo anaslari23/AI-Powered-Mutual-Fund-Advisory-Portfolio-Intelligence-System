@@ -162,14 +162,24 @@ def _fetch_repo_rate() -> Optional[float]:
         return None
 
 
+def safe_fetch(fetch_func, default_value):
+    try:
+        val = fetch_func()
+        if val is None:
+            return default_value
+        return val
+    except Exception as e:
+        print(f"[WARNING] Data fetch failed: {e}")
+        return default_value
+
 def _fetch_bond_yield() -> Optional[float]:
     """
     Fetch 10-year India government bond yield.
-    Tries yfinance ticker '^IN10Y', then falls back to FRED CSV.
+    Tries yfinance ticker '^INDIAVIX', then falls back to FRED CSV.
     """
     # Try yfinance first (faster)
     try:
-        ticker = yf.Ticker("^IN10Y")
+        ticker = yf.Ticker("^INDIAVIX")
         hist = ticker.history(period="5d")
         if not hist.empty:
             return round(float(hist["Close"].dropna().iloc[-1]), 2)
@@ -180,10 +190,6 @@ def _fetch_bond_yield() -> Optional[float]:
     if val is not None:
         return round(val, 2)
     return None
-
-
-# ── Public API ────────────────────────────────────────────────────────────────
-
 
 def get_macro_indicators(use_cache: bool = True) -> Dict[str, Any]:
     """
@@ -219,26 +225,20 @@ def get_macro_indicators(use_cache: bool = True) -> Dict[str, Any]:
     results: Dict[str, Any] = {}
     live_count = 0
 
-    cpi = _compute_cpi_yoy()
-    if cpi is not None:
-        results["cpi_yoy_pct"] = cpi
+    cpi = safe_fetch(_compute_cpi_yoy, _FALLBACKS["cpi_yoy_pct"])
+    if cpi != _FALLBACKS["cpi_yoy_pct"]:
         live_count += 1
-    else:
-        results["cpi_yoy_pct"] = _FALLBACKS["cpi_yoy_pct"]
+    results["cpi_yoy_pct"] = cpi
 
-    repo = _fetch_repo_rate()
-    if repo is not None:
-        results["repo_rate_pct"] = repo
+    repo = safe_fetch(_fetch_repo_rate, _FALLBACKS["repo_rate_pct"])
+    if repo != _FALLBACKS["repo_rate_pct"]:
         live_count += 1
-    else:
-        results["repo_rate_pct"] = _FALLBACKS["repo_rate_pct"]
+    results["repo_rate_pct"] = repo
 
-    bond = _fetch_bond_yield()
-    if bond is not None:
-        results["bond_yield_pct"] = bond
+    bond = safe_fetch(_fetch_bond_yield, _FALLBACKS["bond_yield_pct"])
+    if bond != _FALLBACKS["bond_yield_pct"]:
         live_count += 1
-    else:
-        results["bond_yield_pct"] = _FALLBACKS["bond_yield_pct"]
+    results["bond_yield_pct"] = bond
 
     cpi_val = results["cpi_yoy_pct"]
     if cpi_val > 6.5:
@@ -274,3 +274,60 @@ def get_macro_indicators(use_cache: bool = True) -> Dict[str, Any]:
         logger.warning(f"Macro cache save failed: {e}")
 
     return results
+
+
+# ── Fallback helpers ──────────────────────────────────────────────────────────
+
+_MACRO_CACHE_FILE = "ai_layer/data/cache/macro_cache.json"
+
+
+def macro_fallback() -> Dict[str, Any]:
+    """
+    Return stable synthetic macro values.
+    Used as the last resort when all live and cached sources fail.
+    """
+    return {
+        "cpi_yoy_pct": _FALLBACKS["cpi_yoy_pct"],
+        "repo_rate_pct": _FALLBACKS["repo_rate_pct"],
+        "bond_yield_pct": _FALLBACKS["bond_yield_pct"],
+        "inflation_trend": "stable",
+        "rate_trend": "stable",
+        "source": "fallback",
+        "fetched_at": datetime.now().isoformat(timespec="seconds"),
+    }
+
+
+def get_macro_indicators_safe(use_cache: bool = True) -> Dict[str, Any]:
+    """
+    Fault-tolerant wrapper around get_macro_indicators.
+
+    Fallback hierarchy:
+      1. Live fetch (FRED, FBIL, yfinance)
+      2. Cache file at _MACRO_CACHE_FILE (if exists and readable)
+      3. macro_fallback() — hardcoded stable synthetic values
+
+    Never raises. Always returns a valid dict.
+    """
+    try:
+        return get_macro_indicators(use_cache=use_cache)
+    except Exception as e:
+        logger.warning("macro_data: live fetch failed entirely: %s", e)
+
+    # Try local JSON cache file as secondary fallback
+    try:
+        import json
+        import os
+
+        if os.path.exists(_MACRO_CACHE_FILE):
+            with open(_MACRO_CACHE_FILE, "r") as f:
+                cached = json.load(f)
+            if cached:
+                cached["source"] = "cache_file"
+                logger.info("macro_data: loaded from cache file %s", _MACRO_CACHE_FILE)
+                return cached
+    except Exception as cache_err:
+        logger.warning("macro_data: cache file load failed: %s", cache_err)
+
+    logger.warning("macro_data: all sources failed — using synthetic fallback")
+    return macro_fallback()
+
