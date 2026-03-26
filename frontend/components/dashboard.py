@@ -1,5 +1,8 @@
 import streamlit as st
 from datetime import datetime
+from config import EXCLUDE_ETF_FROM_ADVISORY
+from settings import ADVANCED_PRODUCTS_ENABLED
+from backend.data.benchmark_indices import enrich_with_benchmark_metrics, infer_fund_type
 from backend.engines.risk_engine import compute_risk
 from backend.engines.goal_engine import (
     calculate_retirement_goal,
@@ -8,8 +11,16 @@ from backend.engines.goal_engine import (
 from backend.engines.allocation_engine import get_asset_allocation
 from backend.engines.monte_carlo_engine import run_monte_carlo_simulation
 from backend.engines.portfolio_engine import analyze_portfolio
-from backend.engines.recommendation_engine import suggest_mutual_funds
+from backend.engines.recommendation_engine import (
+    suggest_mutual_funds,
+    suggest_advanced_products,
+)
+from backend.engines.recommendation_engine import get_processed_fund_universe
 from backend.api.report_generator import generate_full_report
+from backend.scoring.monte_carlo_remediation import (
+    build_sensitivity_analysis,
+    generate_fix_recommendation,
+)
 from frontend.components.charts import (
     render_allocation_chart,
     render_projection_chart,
@@ -102,6 +113,73 @@ def _get_vix_metric_meta(signals: dict, market_snapshot: dict) -> dict:
     }
 
 
+def _normalize_recommendation_weights(funds: list[dict]) -> list[dict]:
+    total = sum(float(f.get("allocation_weight", 0.0)) for f in funds)
+    if total <= 0:
+        return funds
+    normalized = []
+    running = 0.0
+    for idx, fund in enumerate(funds):
+        cloned = dict(fund)
+        if idx == len(funds) - 1:
+            cloned["allocation_weight"] = round(max(0.0, 100.0 - running), 2)
+        else:
+            weight = round((float(fund.get("allocation_weight", 0.0)) / total) * 100.0, 2)
+            cloned["allocation_weight"] = weight
+            running += weight
+        normalized.append(cloned)
+    return normalized
+
+
+def _merge_replacements(base_funds: list[dict], replacements: dict) -> list[dict]:
+    merged = []
+    for fund in base_funds:
+        replacement = replacements.get(fund.get("name", ""))
+        merged.append(replacement if replacement else fund)
+    return _normalize_recommendation_weights(merged)
+
+
+def _build_alternative_funds(current_fund: dict, universe_df, top_n: int = 3) -> list[dict]:
+    if universe_df is None or getattr(universe_df, "empty", True):
+        return []
+    same_category = universe_df[universe_df["category"] == current_fund.get("category")].copy()
+    same_category = same_category[
+        same_category["scheme_name"] != current_fund.get("name", "")
+    ].copy()
+    if same_category.empty:
+        return []
+    same_category["fund_type"] = same_category["scheme_name"].apply(infer_fund_type)
+    if EXCLUDE_ETF_FROM_ADVISORY:
+        same_category = same_category[same_category["fund_type"] != "ETF"].copy()
+    if same_category.empty:
+        return []
+    sort_col = "ranking_score" if "ranking_score" in same_category.columns else "3y"
+    same_category = same_category.sort_values(by=sort_col, ascending=False).head(top_n)
+    alternatives = []
+    for _, row in same_category.iterrows():
+        candidate = enrich_with_benchmark_metrics(
+            {
+                "name": row.get("scheme_name", "Unknown Fund"),
+                "category": row.get("category", current_fund.get("category", "N/A")),
+                "risk": current_fund.get("risk", "Moderate"),
+                "allocation_weight": current_fund.get("allocation_weight", 0.0),
+                "1y": row.get("1y", 0.0),
+                "3y": row.get("3y", 0.0),
+                "5y": row.get("5y", 0.0),
+                "nav": row.get("nav", 0.0),
+                "date": row.get("date", "N/A"),
+                "volatility": row.get("volatility", 0.0),
+                "sharpe": row.get("sharpe", 0.0),
+                "score": row.get("ranking_score", row.get("score", 0.0)),
+                "fund_type": row.get("fund_type", infer_fund_type(row.get("scheme_name", ""))),
+                "market_reason": current_fund.get("market_reason", ""),
+                "market_fit_reason": current_fund.get("market_fit_reason", ""),
+            }
+        )
+        alternatives.append(candidate)
+    return alternatives
+
+
 def render_dashboard(client_data: dict):
     # ── NEW: Macro Context Engine ─────────────────────────────────────────────
     macro_context = get_macro_context()
@@ -163,10 +241,21 @@ def render_dashboard(client_data: dict):
     recommended_funds_base, is_live_data = suggest_mutual_funds(
         allocation["allocation"], risk_profile["category"]
     )
+    advanced_products = (
+        suggest_advanced_products(
+            allocation=allocation["allocation"],
+            annual_income=float(client_data.get("monthly_income", 0.0)) * 12.0,
+            net_worth=float(portfolio_analysis.get("net_worth", 0.0)),
+        )
+        if ADVANCED_PRODUCTS_ENABLED
+        else {"bonds": [], "eligibility_cards": []}
+    )
+    processed_universe_df, _ = get_processed_fund_universe()
     ai_intel = get_live_intelligence(
         base_allocation=allocation["allocation"],
         recommended_funds=recommended_funds_base,
         risk_category=risk_profile["category"],
+        available_capital=float(client_data.get("existing_savings", 0.0)),
         use_cache=True,
     )
     signals = ai_intel.get("signals", {})
@@ -176,6 +265,7 @@ def render_dashboard(client_data: dict):
     last_upd = ai_intel.get("last_updated", "unknown")
     macro_indicators_live = ai_intel.get("macro_indicators", {})
     market_snapshot = ai_intel.get("market_snapshot", {})
+    investment_mode_recommendation = ai_intel.get("investment_mode_recommendation", {})
     live_inflation_meta = _get_macro_metric_meta(macro_indicators_live, "cpi_yoy_pct", 6.0)
     live_repo_meta = _get_macro_metric_meta(macro_indicators_live, "repo_rate_pct", 6.5)
     live_bond_meta = _get_macro_metric_meta(macro_indicators_live, "bond_yield_pct", 7.1)
@@ -224,93 +314,20 @@ def render_dashboard(client_data: dict):
     # instead of letting the user only see the raw probability number.
     goal_fix_recommendation = None
     if ret_result is not None and probability is not None and probability < 50.0:
-        from backend.utils.sip_calculator import calculate_sip_future_value
-
         current_sip = effective_monthly_savings
         required_sip = float(ret_result.get("required_sip", 0.0))
         required_corpus = float(ret_result.get("future_corpus", 0.0))
-        years = int(ret_result.get("years_to_goal", 0))
-
-        pct = (current_sip / required_sip) if required_sip > 0 else 0.0
-        gap_sip = max(0.0, required_sip - current_sip)
-
-        # Option 1: Increase SIP to cover the SIP gap
-        option_1 = (
-            f"Increase monthly savings by ₹{gap_sip:,.0f} "
-            f"to meet the ₹{required_corpus:,.0f} corpus target."
+        goal_fix_recommendation = generate_fix_recommendation(
+            current_sip=current_sip,
+            required_sip=required_sip,
+            required_corpus=required_corpus,
+            current_age=int(client_data["age"]),
+            retirement_age=int(client_data["target_retirement_age"]),
+            current_monthly_expense=float(ret_expense or 0.0),
+            existing_corpus=float(client_data["existing_corpus"]),
+            expected_return=projection_base_roi,
+            annual_volatility=0.15,
         )
-
-        # Option 2: Extend retirement age until required SIP fits capacity
-        extra_years = 0
-        adjusted_sip = required_sip
-        if ret_expense is not None:
-            base_ret_age = int(client_data["target_retirement_age"])
-            # Try up to 5 extra years to avoid excessive computation.
-            for k in range(1, 6):
-                new_ret_age = base_ret_age + k
-                new_ret = calculate_retirement_goal(
-                    current_age=client_data["age"],
-                    current_monthly_expense=ret_expense,
-                    expected_return_rate=projection_base_roi,
-                    retirement_age=new_ret_age,
-                    existing_corpus=client_data["existing_corpus"],
-                )
-                new_required_sip = float(new_ret.get("required_sip", required_sip))
-                if new_required_sip <= current_sip:
-                    extra_years = k
-                    adjusted_sip = new_required_sip
-                    break
-                adjusted_sip = new_required_sip
-            if extra_years == 0:
-                # If we didn't find a fit, still propose the 5-year extension.
-                extra_years = 5
-                adjusted_sip = adjusted_sip
-
-        option_2 = (
-            f"Extend retirement age by {extra_years} years — "
-            f"required SIP drops to ₹{adjusted_sip:,.0f}/month."
-        )
-
-        # Option 3: Reduce target corpus to what current SIP can achieve (Monte Carlo re-check)
-        existing_corpus = float(client_data["existing_corpus"])
-        expected_annual_return = projection_base_roi
-        annual_volatility = 0.15
-
-        # Achievable corpus at horizon using current SIP for the "shortfall" portion.
-        fv_existing = existing_corpus * ((1 + expected_annual_return) ** years)
-        fv_shortfall_sip = calculate_sip_future_value(
-            current_sip, expected_annual_return, years
-        )
-        achievable_corpus = fv_existing + fv_shortfall_sip
-
-        new_probability = run_monte_carlo_simulation(
-            initial_corpus=existing_corpus,
-            monthly_sip=current_sip,
-            years=years,
-            target_corpus=achievable_corpus,
-            expected_annual_return=expected_annual_return,
-            annual_volatility=annual_volatility,
-        )
-
-        option_3 = (
-            f"Reduce retirement corpus target to ₹{achievable_corpus:,.0f} "
-            f"(achievable at ₹{current_sip:,.0f}/month SIP = {new_probability:.0f}% confidence)."
-        )
-
-        recommended = "option_2"
-        gap_analysis = (
-            f"Your current SIP capacity (₹{current_sip:,.0f}) covers "
-            f"{pct:.0%} of the required SIP (₹{required_sip:,.0f}). "
-            f"Gap: ₹{gap_sip:,.0f}/month."
-        )
-
-        goal_fix_recommendation = {
-            "gap_analysis": gap_analysis,
-            "option_1": option_1,
-            "option_2": option_2,
-            "option_3": option_3,
-            "recommended": recommended,
-        }
 
     st.markdown("---")
     st.subheader("Risk Profile Analysis")
@@ -505,6 +522,57 @@ def render_dashboard(client_data: dict):
 
     # Investment Recommendations
     st.markdown("---")
+    st.subheader("Smart Deployment Recommendation")
+    if investment_mode_recommendation:
+        mode_col1, mode_col2 = st.columns([1, 2])
+        with mode_col1:
+            st.metric(
+                "Recommended Mode",
+                investment_mode_recommendation.get("recommended_mode", "SIP"),
+            )
+            st.metric(
+                "Market Stability",
+                f"{float(investment_mode_recommendation.get('market_stability_score', 0.0)):.2f}",
+            )
+        with mode_col2:
+            st.markdown(
+                f"**Trigger:** {investment_mode_recommendation.get('trigger_reason', '-')}"
+            )
+            st.markdown(
+                f"**Deployment Plan:** {investment_mode_recommendation.get('deployment_plan', '-')}"
+            )
+            st.markdown(
+                f"**Expected Advantage vs Flat SIP:** {investment_mode_recommendation.get('expected_advantage_vs_flat_sip', '-')}"
+            )
+    else:
+        st.info("Smart deployment recommendation unavailable.")
+
+    st.markdown("---")
+    if ADVANCED_PRODUCTS_ENABLED:
+        advanced_bonds = advanced_products.get("bonds", [])
+        eligibility_cards = advanced_products.get("eligibility_cards", [])
+        if advanced_bonds:
+            st.subheader("Advanced Investment Categories")
+            st.caption("Advanced category support is enabled for this workspace.")
+            st.markdown("**Bond Recommendations**")
+            for bond in advanced_bonds:
+                with st.expander(
+                    f"{bond['name']} ({bond.get('allocation_weight', 0.0):.2f}%) - {bond['bond_type']}"
+                ):
+                    b1, b2, b3 = st.columns(3)
+                    b1.metric("Issuer", bond.get("issuer", "N/A"))
+                    b2.metric("Rating", bond.get("rating", "N/A"))
+                    b3.metric("Coupon Rate", f"{bond.get('coupon_rate', 0.0):.2f}%")
+                    b4, b5, b6 = st.columns(3)
+                    b4.metric("YTM", f"{bond.get('ytm', 0.0):.2f}%")
+                    b5.metric("Maturity Date", bond.get("maturity_date", "N/A"))
+                    b6.metric("Tax Treatment", bond.get("tax_treatment", "N/A"))
+        for card in advanced_products.get("eligibility_cards", []):
+            st.info(f"**{card.get('title', 'Advanced Product')}**: {card.get('message', '')}")
+
+        if advanced_bonds or eligibility_cards:
+            st.markdown("---")
+
     st.subheader("Recommended Mutual Funds")
     st.caption(
         "AI curated funds based on your Risk Profile"
@@ -512,6 +580,11 @@ def render_dashboard(client_data: dict):
     )
     # Use AI-ranked funds (market-aware scoring) if available
     recommended_funds = ranked_funds if ranked_funds else recommended_funds_base
+    st.session_state.setdefault("fund_replacements", {})
+    recommended_funds = _merge_replacements(
+        recommended_funds,
+        st.session_state.get("fund_replacements", {}),
+    )
 
     if is_live_data:
         st.success("**Live NAV data from AMFI**")
@@ -520,11 +593,11 @@ def render_dashboard(client_data: dict):
         st.warning(
             "**Live data momentarily unavailable. Using internal fallback dataset.**"
         )
+    if EXCLUDE_ETF_FROM_ADVISORY:
+        st.caption("ETFs excluded from advisory model per platform policy.")
 
     # ── NEW: Generate XAI explanations for all funds ─────────────────────────
-    fund_explanations = {
-        e["name"]: e["reason"] for e in explain_all_funds(recommended_funds)
-    }
+    fund_explanations = {e["name"]: e for e in explain_all_funds(recommended_funds)}
     # Build set of AI scores for quick lookup
     ai_scores = {f.get("name", ""): f.get("ai_score") for f in ranked_funds}
 
@@ -548,6 +621,16 @@ def render_dashboard(client_data: dict):
             col_f4.metric("3Y Return", f"{fund['3y']}%")
             col_f5.metric("5Y Return", f"{fund['5y']}%")
 
+            st.write("**Benchmark Comparison**")
+            bench_col1, bench_col2, bench_col3 = st.columns(3)
+            bench_col1.metric("Benchmark", fund.get("benchmark_index", "N/A"))
+            bench_col2.metric("Alpha 1Y", f"{fund.get('alpha_1y', 0.0):+.2f}%")
+            bench_col3.metric("Alpha 3Y", f"{fund.get('alpha_3y', 0.0):+.2f}%")
+            bench_col4, bench_col5, bench_col6 = st.columns(3)
+            bench_col4.metric("Benchmark 1Y", f"{fund.get('benchmark_1y_return', 0.0):.2f}%")
+            bench_col5.metric("Benchmark 3Y", f"{fund.get('benchmark_3y_return', 0.0):.2f}%")
+            bench_col6.metric("Information Ratio", f"{fund.get('information_ratio', 0.0):.2f}")
+
             # ── NEW: Plain-English fund explanation + AI score ──────────────────
             ai_score = ai_scores.get(fund["name"])
             if ai_score is not None:
@@ -559,16 +642,46 @@ def render_dashboard(client_data: dict):
             st.divider()
             st.markdown("**Why was this fund selected for you?**")
             reason_dynamic = fund.get("reason", "")
-            reason_xai = fund_explanations.get(fund["name"], "")
+            reason_xai = fund_explanations.get(fund["name"], {})
             market_reason = fund.get("ai_reason", "")
+            rationale = reason_xai.get("rationale", {})
 
             # Prefer dynamic recommender's native reason, then AI Layer's reason, then static XAI
-            if reason_dynamic:
+            if rationale:
+                st.markdown(f"**Why selected:** {rationale.get('why_selected', '-')}")
+                st.markdown(f"**Why now:** {rationale.get('why_now', '-')}")
+                st.markdown(f"**Risk note:** {rationale.get('risk_note', '-')}")
+            elif reason_dynamic:
                 st.markdown(reason_dynamic)
             elif market_reason:
                 st.markdown(market_reason)
-            elif reason_xai:
-                st.markdown(reason_xai)
+            elif reason_xai.get("reason"):
+                st.markdown(reason_xai["reason"])
+
+            replacement_key = f"replace_{fund['name']}"
+            if st.button("Replace this fund", key=replacement_key):
+                st.session_state["active_replacement_fund"] = fund["name"]
+
+            if st.session_state.get("active_replacement_fund") == fund["name"]:
+                with st.sidebar:
+                    st.markdown(f"### Replace {fund['name']}")
+                    alternatives = _build_alternative_funds(fund, processed_universe_df, top_n=3)
+                    if not alternatives:
+                        st.info("No same-category alternatives available.")
+                    for alt in alternatives:
+                        st.markdown(f"**{alt['name']}**")
+                        st.caption(
+                            f"{alt['category']} | 3Y: {alt.get('3y', 0.0):.2f}% | Alpha 3Y: {alt.get('alpha_3y', 0.0):+.2f}% | IR: {alt.get('information_ratio', 0.0):.2f}"
+                        )
+                        if st.button("Swap In", key=f"swap_{fund['name']}_{alt['name']}"):
+                            replacement = dict(alt)
+                            replacement["allocation_weight"] = fund.get("allocation_weight", 0.0)
+                            st.session_state["fund_replacements"][fund["name"]] = replacement
+                            st.session_state["active_replacement_fund"] = None
+                            st.rerun()
+                    if st.button("Close Panel", key=f"close_{fund['name']}"):
+                        st.session_state["active_replacement_fund"] = None
+                        st.rerun()
 
     # Goals Analysis
     st.markdown("---")
@@ -731,7 +844,6 @@ def render_dashboard(client_data: dict):
         # Phase 6.1: sensitivity analysis (only when confidence is low).
         if goal_fix_recommendation:
             try:
-                import numpy as np
                 import plotly.graph_objects as go
 
                 current_sip = effective_monthly_savings
@@ -741,19 +853,18 @@ def render_dashboard(client_data: dict):
                 initial_corpus = float(client_data["existing_corpus"])
 
                 if current_sip > 0 and required_sip > 0 and years > 0 and target_corpus > 0:
-                    max_sip = min(2.0 * required_sip, 2.0 * current_sip)
-                    sips = np.linspace(current_sip, max_sip, 10)
-                    probs = [
-                        run_monte_carlo_simulation(
-                            initial_corpus=initial_corpus,
-                            monthly_sip=float(sip),
-                            years=years,
-                            target_corpus=target_corpus,
-                            expected_annual_return=projection_base_roi,
-                            annual_volatility=0.15,
-                        )
-                        for sip in sips
-                    ]
+                    sensitivity = build_sensitivity_analysis(
+                        current_sip=current_sip,
+                        required_sip=required_sip,
+                        initial_corpus=initial_corpus,
+                        target_corpus=target_corpus,
+                        years=years,
+                        expected_return=projection_base_roi,
+                        annual_volatility=0.15,
+                        points=10,
+                    )
+                    sips = sensitivity["sips"]
+                    probs = sensitivity["probabilities"]
 
                     fig = go.Figure()
                     fig.add_trace(
@@ -779,14 +890,7 @@ def render_dashboard(client_data: dict):
                     fig.add_trace(
                         go.Scatter(
                             x=[current_sip],
-                            y=[run_monte_carlo_simulation(
-                                initial_corpus=initial_corpus,
-                                monthly_sip=current_sip,
-                                years=years,
-                                target_corpus=target_corpus,
-                                expected_annual_return=projection_base_roi,
-                                annual_volatility=0.15,
-                            )],
+                            y=[sensitivity["current_probability"]],
                             mode="markers",
                             marker=dict(color="green", size=10),
                             name="Current SIP",

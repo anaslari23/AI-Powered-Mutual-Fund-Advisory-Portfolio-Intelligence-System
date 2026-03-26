@@ -15,3 +15,8 @@ def test_allocation_sum_validation():
     # Aggressive
     res3 = get_asset_allocation(8.5)
     assert sum(res3["allocation"].values()) == 100
+
+
+def test_bonds_asset_class_present_in_allocation():
+    res = get_asset_allocation(4.0)
+    assert "Bonds" in res["allocation"]

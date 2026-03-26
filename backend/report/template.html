@@ -1,460 +1,780 @@
 <!DOCTYPE html>
 <html>
-
 <head>
     <meta charset="UTF-8">
-    <title>Financial Action Plan</title>
+    <title>Financial Intelligence Report</title>
     <style>
+        @page {
+            margin: 18mm 14mm;
+        }
+
         body {
-            font-family: 'Helvetica', 'Arial', sans-serif;
-            color: #333;
-            line-height: 1.5;
-            padding: 20px;
+            font-family: Helvetica, Arial, sans-serif;
+            color: #1f2937;
+            line-height: 1.45;
+            font-size: 12px;
+        }
+
+        h1, h2, h3, h4 {
+            margin: 0;
         }
 
         h1 {
-            color: #0d47a1;
-            text-align: center;
-            border-bottom: 2px solid #0d47a1;
-            padding-bottom: 10px;
-            margin-bottom: 20px;
+            color: #0f172a;
+            font-size: 24px;
+            margin-bottom: 8px;
         }
 
         h2 {
-            color: #1565c0;
-            border-bottom: 1px solid #ccc;
-            padding-bottom: 5px;
-            margin-top: 25px;
-            margin-bottom: 15px;
+            color: #0f4c81;
+            font-size: 18px;
+            border-bottom: 1px solid #d7e3f1;
+            padding-bottom: 6px;
+            margin-bottom: 12px;
         }
 
         h3 {
-            color: #1a237e;
-            margin-top: 15px;
-            font-size: 1.2em;
+            color: #1e3a5f;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        h4 {
+            color: #1f2937;
+            font-size: 12px;
+            margin-bottom: 6px;
+        }
+
+        p {
+            margin: 0 0 10px 0;
         }
 
         .section {
-            margin-bottom: 25px;
+            margin-bottom: 22px;
             page-break-inside: avoid;
+        }
+
+        .page-break {
+            page-break-before: always;
+        }
+
+        .subtitle {
+            color: #64748b;
+            font-size: 11px;
+            margin-bottom: 18px;
+        }
+
+        .hero-card {
+            background: linear-gradient(135deg, #0f172a 0%, #1d4e89 100%);
+            color: #f8fafc;
+            padding: 16px 18px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+        }
+
+        .score-dashboard-grid {
+            display: table;
+            width: 100%;
+            table-layout: fixed;
+            border-spacing: 8px 0;
+            margin-top: 12px;
+        }
+
+        .score-dashboard-cell {
+            display: table-cell;
+            background: #f8fafc;
+            border: 1px solid #dbe7f3;
+            border-radius: 10px;
+            padding: 10px 8px;
+            text-align: center;
+            vertical-align: top;
+        }
+
+        .score-icon {
+            display: block;
+            font-size: 15px;
+            margin-bottom: 3px;
+        }
+
+        .score-label {
+            font-size: 10px;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .score-value {
+            display: block;
+            font-size: 16px;
+            font-weight: bold;
+            color: #0f172a;
+            margin: 4px 0;
+        }
+
+        .score-status {
+            font-size: 10px;
+            color: #64748b;
+        }
+
+        .chart-img {
+            max-width: 100%;
+            display: block;
+            margin: 10px auto;
         }
 
         .data-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 10px;
-            margin-bottom: 5px;
+            margin: 8px 0 6px 0;
         }
 
         .data-table th,
         .data-table td {
-            border: 1px solid #ddd;
+            border: 1px solid #dbe4ee;
             padding: 8px;
             text-align: left;
-            font-size: 12px;
+            vertical-align: top;
+            font-size: 11px;
         }
 
         .data-table th {
-            background-color: #f5f5f5;
-            font-weight: bold;
-            color: #333;
+            background: #edf4fb;
+            color: #0f172a;
         }
 
-        .source-footnote {
+        .source-row td {
             font-size: 10px;
-            color: #888;
-            margin-bottom: 15px;
+            color: #64748b;
+            background: #fafcff;
             font-style: italic;
         }
 
-        .insight-card {
-            border-left: 5px solid #ccc;
-            background: #f9f9f9;
-            padding: 10px 15px;
+        .split-two {
+            display: table;
+            width: 100%;
+            table-layout: fixed;
+            border-spacing: 12px 0;
+        }
+
+        .split-col {
+            display: table-cell;
+            vertical-align: top;
+        }
+
+        .metric-strip {
+            background: #f8fafc;
+            border: 1px solid #dbe4ee;
+            border-radius: 10px;
+            padding: 10px 12px;
             margin-bottom: 10px;
-            border-radius: 4px;
         }
 
-        .insight-card.success { border-left-color: #4caf50; background-color: #f1f8e9; }
-        .insight-card.warning { border-left-color: #ff9800; background-color: #fff3e0; }
-        .insight-card.danger { border-left-color: #f44336; background-color: #ffebee; }
-
-        .dashboard-row {
-            display: flex;
-            justify-content: space-between;
-            text-align: center;
-            margin-bottom: 20px;
-            background: #f5f5f5;
-            padding: 15px;
-            border-radius: 8px;
-        }
-
-        .dashboard-item {
-            flex: 1;
-        }
-
-        .dashboard-score {
+        .metric-kpi {
             font-size: 18px;
             font-weight: bold;
-            display: block;
+            color: #0f172a;
         }
 
-        .dashboard-label {
+        .metric-label {
             font-size: 10px;
-            color: #666;
+            color: #64748b;
             text-transform: uppercase;
+            letter-spacing: 0.04em;
         }
 
-        .gauge-img {
-            width: 100%;
-            max-width: 600px;
-            margin: 0 auto;
-            display: block;
+        .assumptions-panel {
+            background: #eef6ff;
+            border: 1px solid #c8def8;
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin: 8px 0 10px 0;
+            font-size: 11px;
         }
 
-        .chart-img {
-            max-width: 100%;
-            margin-top: 10px;
+        .goal-card,
+        .mode-card,
+        .benchmark-card {
+            border: 1px solid #dbe4ee;
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 12px;
+            background: #ffffff;
         }
 
-        .appendix-page {
-            page-break-before: always;
+        .insight-card {
+            border-left: 5px solid #cbd5e1;
+            padding: 10px 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            background: #f8fafc;
+        }
+
+        .insight-card.success {
+            border-left-color: #2e7d32;
+            background: #f1f8e9;
+        }
+
+        .insight-card.warning {
+            border-left-color: #f59e0b;
+            background: #fff7e8;
+        }
+
+        .insight-card.danger {
+            border-left-color: #dc2626;
+            background: #fef2f2;
+        }
+
+        .inline-note {
+            font-size: 11px;
+            color: #475569;
+            margin-top: 6px;
+        }
+
+        .appendix-entry {
+            margin-bottom: 18px;
+            padding-bottom: 12px;
+            border-bottom: 1px dashed #dbe4ee;
         }
 
         .disclaimer {
             font-size: 10px;
-            color: #777;
-            margin-top: 40px;
-            text-align: justify;
-            border-top: 1px solid #ddd;
+            color: #475569;
+            border-top: 1px solid #dbe4ee;
             padding-top: 10px;
+            margin-top: 16px;
         }
-
-        .assumptions-panel {
-            background: #eef2f7;
-            padding: 10px;
-            border-radius: 5px;
-            margin-top: 10px;
-            font-size: 11px;
-        }
-
-        .status-icon {
-            font-size: 14px;
-        }
-
     </style>
 </head>
-
 <body>
+    <h1>Financial Intelligence Report</h1>
+    <div class="subtitle">Generated on {{ today }}</div>
 
-    <h1>Financial Intelligence Report - 2026</h1>
-
-    <!-- 1. EXECUTIVE SUMMARY -->
     <div class="section">
         <h2>1. Executive Summary</h2>
-        <p>This comprehensive financial plan is designed to provide institutional-grade intelligence for your personal
-            wealth journey. By integrating AI-driven fund selection, macro-economic context, and probabilistic goal
-            simulations, we aim to ensure your capital is deployed with maximum efficiency and safety.</p>
-
-        <!-- Visual Score Dashboard -->
-        <div class="dashboard-row">
-            <img src="{{ charts.score_dashboard }}" class="gauge-img" alt="Score Dashboard">
+        <div class="hero-card">
+            <p>{{ executive_summary.overview }}</p>
         </div>
-    </div>
-
-    <!-- 2. CLIENT PROFILE -->
-    <div class="section">
-        <h2>2. Client Profile</h2>
-        <table class="data-table">
-            <tr>
-                <th width="30%">Attribute</th>
-                <th>Value</th>
-            </tr>
-            <tr><td>Age</td><td>{{ client.age }} Years</td></tr>
-            <tr><td>Dependents</td><td>{{ client.dependents }}</td></tr>
-            <tr><td>Monthly Income</td><td>₹{{ "{:,.0f}".format(client.monthly_income) }}</td></tr>
-            <tr><td>Savings Capacity</td><td>₹{{ "{:,.0f}".format(client.monthly_savings) }} / month</td></tr>
-            <tr><td>Behavioral Profile</td><td>{{ client.behavior }}</td></tr>
-        </table>
-
-        <h3>Insurance & Liability Overview</h3>
-        <table class="data-table">
-            <tr>
-                <th width="30%">Protection Type</th>
-                <th>Current Coverage</th>
-                <th>Status</th>
-            </tr>
-            <tr>
-                <td>Life Insurance</td>
-                <td>₹{{ "{:,.0f}".format(insurance.get('life_cover', 0)) }}</td>
-                <td>{{ "✅ Adequate" if insurance.get('life_gap', 0) <= 0 else "❌ Gap: ₹{:,.0f}".format(insurance.get('life_gap', 0)) }}</td>
-            </tr>
-            <tr>
-                <td>Health Insurance</td>
-                <td>₹{{ "{:,.0f}".format(insurance.get('health_cover', 0)) }}</td>
-                <td>{{ "✅ Adequate" if not insurance.get('health_gap') else "⚠️ Upgrade Recommended" }}</td>
-            </tr>
-            <tr>
-                <td>Total Liabilities</td>
-                <td>₹{{ "{:,.0f}".format(client.get('total_liabilities', 0)) }}</td>
-                <td>--</td>
-            </tr>
-        </table>
-        <div class="source-footnote">Source: Client declaration and Insurance Gap Analysis Engine.</div>
-    </div>
-
-    <!-- 3. RISK SCORE EXPLANATION -->
-    <div class="section">
-        <h2>3. Risk Score Explanation</h2>
-        <p>Your calculated Risk Score is <strong>{{ risk.score }} / 10</strong>, placing you in the
-            <strong>{{ risk.category }}</strong> category.</p>
-        
-        <div style="text-align: center;">
-            <img src="{{ charts.risk_factors }}" class="chart-img" alt="Risk Factors">
-        </div>
-
-        <p style="font-size: 12px; color: #555;">
-            <strong>Methodology Note:</strong> This score represents your "Risk Capacity" (financial ability to take hits) 
-            intersected with "Risk Tolerance" (behavioral comfort). We use a tree-based model to weight these factors.
-        </p>
-    </div>
-
-    <!-- 4. GOAL PLANNING BREAKDOWN -->
-    <div class="section">
-        <h2>4. Goal Planning Breakdown</h2>
-        {% for goal in goals %}
-        <div class="insight-card">
-            <h3>{{ goal.name }}</h3>
-            <table class="data-table">
-                <tr>
-                    <td>Time Horizon: <strong>{{ goal.years }} Years</strong></td>
-                    <td>Target Corpus: <strong>₹{{ "{:,.0f}".format(goal.future_value) }}</strong></td>
-                </tr>
-                <tr>
-                    <td>ROI Assumption: <strong>{{ goal.roi }}%</strong></td>
-                    <td>Inflation Used: <strong>{{ goal.inflation }}%</strong></td>
-                </tr>
-                <tr>
-                    <td><strong>Required SIP:</strong></td>
-                    <td><strong style="font-size: 1.2em; color: #0d47a1;">₹{{ "{:,.0f}".format(goal.required_sip) }}</strong></td>
-                </tr>
-            </table>
-            {% if goal.get('step_up') %}
-            <p style="font-size: 11px;">💡 <em>Step-up SIP recommendation: Increase monthly contribution by {{ goal.step_up }}% annually to reach goal faster.</em></p>
-            {% endif %}
-            {% if goal.name.lower() == 'retirement' %}
-            <p style="font-size: 11px;">📉 <em>Estimated post-retirement monthly annuity: ₹{{ "{:,.0f}".format(goal.get('annuity', 0)) }} (Inflation adjusted).</em></p>
-            {% endif %}
-        </div>
-        {% endfor %}
-        <div class="source-footnote">Source: Goal Registry Engine with real-time inflation indexing.</div>
-    </div>
-
-    <!-- 5. EXISTING PORTFOLIO HEALTH -->
-    <div class="section">
-        <h2>5. Existing Portfolio Health</h2>
-        <p>Current Corpus: <strong>₹{{ "{:,.0f}".format(portfolio.get('total_corpus', 0)) }}</strong> | 
-           Net Worth: <strong>₹{{ "{:,.0f}".format(portfolio.get('net_worth', 0)) }}</strong> |
-           Diversification: <strong>{{ portfolio.get('diversification_score', 0) }}/10</strong></p>
-        
-        <div class="insights-container">
-            {% for insight in portfolio.get('insights_v2', []) %}
-            <div class="insight-card {{ insight.type }}">
-                <strong>{{ insight.headline }}</strong>: {{ insight.text }}
+        <img src="{{ charts.score_dashboard }}" class="chart-img" alt="Score Dashboard">
+        <div class="score-dashboard-grid">
+            {% for item in executive_summary.get('score_dashboard', []) %}
+            <div class="score-dashboard-cell">
+                <span class="score-icon">{{ item.icon }}</span>
+                <span class="score-label">{{ item.label }}</span>
+                <span class="score-value">{{ item.value }}</span>
+                <div class="score-status">{{ item.status }}</div>
             </div>
             {% endfor %}
         </div>
+        <table class="data-table">
+            <tfoot>
+                <tr class="source-row">
+                    <td colspan="5">{{ executive_summary.get('source_note', '') }}</td>
+                </tr>
+            </tfoot>
+        </table>
     </div>
 
-    <!-- 6a. INSURANCE & LIABILITY SUMMARY -->
     <div class="section">
-        <h2>6a. Insurance & Liability Summary</h2>
-        <p>A robust plan must protect against catastrophic risks before seeking market alpha.</p>
-        <p>
-            Term Cover: <strong>₹{{ "{:,.0f}".format(insurance.get('life_cover', 0)) }}</strong> |
-            Recommended: <strong>₹{{ "{:,.0f}".format(insurance.get('recommended_term_cover', 0)) }}</strong> |
-            Health Cover: <strong>₹{{ "{:,.0f}".format(insurance.get('health_cover', 0)) }}</strong> |
-            Annual Premium: <strong>₹{{ "{:,.0f}".format(insurance.get('annual_insurance_premium', 0)) }}</strong>
-        </p>
-        <p>
-            Total Liabilities: <strong>₹{{ "{:,.0f}".format(insurance.get('total_liabilities', 0)) }}</strong> |
-            Monthly EMI: <strong>₹{{ "{:,.0f}".format(insurance.get('total_emi', 0)) }}</strong>
-        </p>
-        {% if insurance.get('loans') %}
+        <h2>2. Client Profile</h2>
         <table class="data-table">
-            <tr>
-                <th>Loan Type</th>
-                <th>Outstanding Principal</th>
-                <th>Monthly EMI</th>
-            </tr>
-            {% for loan in insurance.get('loans', []) %}
-            <tr>
-                <td>{{ loan.type }}</td>
-                <td>₹{{ "{:,.0f}".format(loan.outstanding_principal) }}</td>
-                <td>₹{{ "{:,.0f}".format(loan.emi) }}</td>
-            </tr>
-            {% endfor %}
+            <thead>
+                <tr>
+                    <th width="34%">Attribute</th>
+                    <th>Value</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td>Age</td><td>{{ client.age }} years</td></tr>
+                <tr><td>Dependents</td><td>{{ client.dependents }}</td></tr>
+                <tr><td>Monthly Income</td><td>₹{{ "{:,.0f}".format(client.monthly_income) }}</td></tr>
+                <tr><td>Monthly Savings Capacity</td><td>₹{{ "{:,.0f}".format(client.monthly_savings) }}</td></tr>
+                <tr><td>Effective Monthly Savings</td><td>₹{{ "{:,.0f}".format(client.effective_monthly_savings) }}</td></tr>
+                <tr><td>Behavioural Profile</td><td>{{ client.behavior }}</td></tr>
+            </tbody>
+            <tfoot>
+                <tr class="source-row">
+                    <td colspan="2">{{ client.get('source_note', '') }}</td>
+                </tr>
+            </tfoot>
         </table>
-        {% endif %}
+
+        <h3>Insurance & Liability</h3>
         <table class="data-table">
-            <tr>
-                <th>Risk Type</th>
-                <th>Recommendation</th>
-                <th>Priority</th>
-            </tr>
-            {% for item in insurance.recommendations %}
-            <tr>
-                <td>{{ item.type }}</td>
-                <td>{{ item.action }}</td>
-                <td>{{ item.priority }}</td>
-            </tr>
-            {% endfor %}
+            <thead>
+                <tr>
+                    <th>Protection / Liability</th>
+                    <th>Current Position</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Term Life Cover</td>
+                    <td>₹{{ "{:,.0f}".format(insurance.get('life_cover', 0)) }}</td>
+                    <td>{{ "Adequate" if insurance.get('life_gap', 0) <= 0 else "Gap: ₹{:,.0f}".format(insurance.get('life_gap', 0)) }}</td>
+                </tr>
+                <tr>
+                    <td>Health Cover</td>
+                    <td>₹{{ "{:,.0f}".format(insurance.get('health_cover', 0)) }}</td>
+                    <td>{{ "Adequate" if insurance.get('health_gap', 0) <= 0 else "Upgrade Recommended" }}</td>
+                </tr>
+                <tr>
+                    <td>Annual Insurance Premium</td>
+                    <td>₹{{ "{:,.0f}".format(insurance.get('annual_insurance_premium', 0)) }}</td>
+                    <td>Ongoing</td>
+                </tr>
+                <tr>
+                    <td>Total Liabilities</td>
+                    <td>₹{{ "{:,.0f}".format(insurance.get('total_liabilities', 0)) }}</td>
+                    <td>Monthly EMI ₹{{ "{:,.0f}".format(insurance.get('total_emi', 0)) }}</td>
+                </tr>
+            </tbody>
+            <tfoot>
+                <tr class="source-row">
+                    <td colspan="3">{{ insurance.get('source_note', '') }}</td>
+                </tr>
+            </tfoot>
         </table>
     </div>
 
-    <!-- 7. TARGET ASSET ALLOCATION -->
-    <div class="section" style="page-break-before: always;">
-        <h2>7. Target Asset Allocation</h2>
-        <p><strong>Reasoning:</strong> Based on your Risk Score of <strong>{{ risk.score }}</strong> and current Market Stability of 
-           <strong>{{ macro.stability }}%</strong>, we have optimized for {{ "Growth" if risk.score > 7 else "capital preservation and steady growth" }}.</p>
-        
-        <table class="data-table">
-            <tr>
-                <th>Asset Class</th>
-                <th>Target %</th>
-                <th>Rationale</th>
-            </tr>
-            {% for asset in allocation.targets %}
-            <tr>
-                <td>{{ asset.name }}</td>
-                <td>{{ asset.percent }}%</td>
-                <td style="font-size: 10px;">{{ asset.rationale }}</td>
-            </tr>
-            {% endfor %}
-        </table>
-    </div>
-
-    <!-- 8. INVESTMENT MODE RECOMMENDATION -->
     <div class="section">
-        <h2>8. Investment Mode Recommendation</h2>
-        <div class="insight-card success">
-            <p><strong>Recommended Strategy:</strong> {{ investment_mode.title }}</p>
-            <p style="font-size: 12px;">{{ investment_mode.description }}</p>
-        </div>
-    </div>
-
-    <!-- 9. MUTUAL FUND RECOMMENDATIONS -->
-    <div class="section">
-        <h2>9. Mutual Fund Recommendations (Equity/Hybrid)</h2>
-        <table class="data-table">
-            <tr>
-                <th>Fund Name</th>
-                <th>Rationale</th>
-                <th>Benchmark Δ (Alpha)</th>
-                <th>Target Weight</th>
-                <th>AI Score</th>
-            </tr>
-            {% for fund in funds %}
-            <tr>
-                <td><strong>{{ fund.name }}</strong></td>
-                <td style="font-size: 10px;">{{ fund.ai_reason }}</td>
-                <td>{{ fund.alpha }}%</td>
-                <td>{{ fund.weight }}%</td>
-                <td><strong>{{ fund.score }}/100</strong></td>
-            </tr>
-            {% endfor %}
-        </table>
-        <div class="source-footnote">Source: AI Scorer 2.0 (multi-factor persistence model). As-of {{ today }}.</div>
-    </div>
-
-    <!-- 10. SCENARIO PROJECTIONS -->
-    <div class="section">
-        <h2>10. Scenario Projections</h2>
-        <table class="data-table">
-            <tr>
-                <th>Timeline</th>
-                <th>Linear Growth (ROI: {{ scenarios.base_roi }}%)</th>
-                <th>Step-up SIP Plan (+{{ scenarios.step_up_pct }}% p.a.)</th>
-            </tr>
-            {% for row in scenarios.projections %}
-            <tr>
-                <td>{{ row.year }} Years</td>
-                <td>₹{{ "{:,.0f}".format(row.base_val) }}</td>
-                <td>₹{{ "{:,.0f}".format(row.step_val) }}</td>
-            </tr>
-            {% endfor %}
-        </table>
+        <h2>3. Risk Score Explanation</h2>
+        <p>Your Risk Score is <strong>{{ risk.score }} / 10</strong>, placing you in the <strong>{{ risk.category }}</strong> category.</p>
+        <img src="{{ charts.risk_factors }}" class="chart-img" alt="Risk Factor Contribution Chart">
         <div class="assumptions-panel">
-            <strong>Assumptions Panel:</strong>
-            - Projections include monthly SIP of ₹{{ "{:,.0f}".format(client.monthly_savings) }}.
-            - All future values are <strong>{{ "Inflation Adjusted" if scenarios.inflation_adjusted else "Nominal" }}</strong>.
-            - Base Inflation: {{ scenarios.inflation_rate }}%.
+            <strong>Methodology Note:</strong> {{ risk.methodology_note }}<br>
+            <strong>Mathematical Basis:</strong> {{ risk.mathematical_basis }}
         </div>
-        {% if scenarios.get('step_up_comparison') and scenarios.step_up_comparison[0] %}
-        <table class="data-table" style="margin-top: 16px;">
-            <tr>
-                <th>Mode</th>
-                <th>Monthly SIP (Year 1)</th>
-                <th>Corpus at Goal</th>
-                <th>Total Invested</th>
-                <th>Wealth Multiplier</th>
-            </tr>
-            {% for row in scenarios.step_up_comparison %}
-            <tr>
-                <td>{{ row.mode }}</td>
-                <td>₹{{ "{:,.0f}".format(row.monthly_sip_year_1) }}</td>
-                <td>₹{{ "{:,.0f}".format(row.corpus_at_goal) }}</td>
-                <td>₹{{ "{:,.0f}".format(row.total_invested) }}</td>
-                <td>{{ "{:.2f}".format(row.wealth_multiplier) }}x</td>
-            </tr>
-            {% endfor %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Factor</th>
+                    <th>Contribution</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for factor, value in risk.explanation.items() %}
+                <tr>
+                    <td>{{ factor }}</td>
+                    <td>{{ "{:+.2f}".format(value) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr class="source-row">
+                    <td colspan="2">{{ risk.get('source_note', '') }}</td>
+                </tr>
+            </tfoot>
         </table>
-        {% if scenarios.get('step_up_note') %}
-        <p style="font-size: 11px;">💡 <em>{{ scenarios.step_up_note }}</em></p>
-        {% endif %}
-        {% endif %}
     </div>
 
-    <!-- 11. MONTE CARLO SIMULATION -->
     <div class="section">
-        <h2>11. Monte Carlo Simulation (Stress Test)</h2>
-        <p>We simulated 1,000 market paths over your {{ goals[0].years }} year horizon. Result:</p>
-        
-        <div class="insight-card {{ 'success' if monte_carlo.prob >= 80 else ('warning' if monte_carlo.prob >= 50 else 'danger') }}">
-            <strong>Confidence Score: {{ monte_carlo.prob }}%</strong>
-            <p style="font-size: 12px;">{{ monte_carlo.interpretation }}</p>
-        </div>
+        <h2>4. Goal Planning Breakdown</h2>
+        {% for goal in goals %}
+        <div class="goal-card">
+            <h3>{{ goal.name }}</h3>
+            <div class="assumptions-panel">
+                <strong>Assumptions Used</strong><br>
+                Inflation Rate: {{ goal.assumptions.inflation_rate }}<br>
+                Expected ROI: {{ goal.assumptions.expected_roi }}<br>
+                SIP Step-Up: {{ goal.assumptions.sip_topup_rate }}<br>
+                Tax Treatment: {{ goal.assumptions.tax_treatment }}
+            </div>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Goal Metric</th>
+                        <th>Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>Goal Horizon</td><td>{{ goal.years }} years</td></tr>
+                    <tr><td>Target Corpus</td><td>₹{{ "{:,.0f}".format(goal.future_value) }}</td></tr>
+                    <tr><td>Required Monthly SIP</td><td>₹{{ "{:,.0f}".format(goal.required_sip) }}</td></tr>
+                    <tr><td>Inflation Rate Used</td><td>{{ "{:.2f}".format(goal.inflation) }}%</td></tr>
+                    <tr><td>ROI Assumption</td><td>{{ "{:.2f}".format(goal.roi) }}%</td></tr>
+                    <tr><td>Step-Up SIP Option</td><td>{{ "{:.2f}".format(goal.step_up) }}% annual step-up</td></tr>
+                </tbody>
+                <tfoot>
+                    <tr class="source-row">
+                        <td colspan="2">{{ goal.get('source_note', '') }}</td>
+                    </tr>
+                </tfoot>
+            </table>
 
-        {% if monte_carlo.prob < 80 %}
-        <p style="color: #f44336; font-size: 11px;">⚠️ <strong>Fix Recommendation:</strong> {{ monte_carlo.fix_recommendation }}</p>
-        {% endif %}
-        
-        <div style="text-align: center;">
-            <img src="{{ charts.sensitivity }}" class="chart-img" alt="Sensitivity Chart">
-        </div>
-    </div>
-
-    <!-- 12. SCORE STANDARDS REFERENCE (APPENDIX) -->
-    <div class="section appendix-page">
-        <h2>12. Appendix: AI Score Standards</h2>
-        <p>Detailed methodology and mathematical basis for the intelligence markers used in this report.</p>
-        
-        {% for standard in standards %}
-        <div style="margin-bottom: 20px; border-bottom: 1px dashed #eee; padding-bottom: 10px;">
-            <h3>{{ standard.score_name }} ({{ standard.scale }})</h3>
-            <p style="font-size: 11px;"><strong>Mathematical Basis:</strong> {{ standard.mathematical_basis }}</p>
-            <p style="font-size: 11px;"><strong>Geopolitical Context:</strong> {{ standard.geopolitical_basis }}</p>
-            <p style="font-size: 11px;"><strong>Historical Calibration:</strong> {{ standard.historical_calibration }}</p>
+            {% if goal.get('distribution_phase') %}
+            <div class="split-two">
+                <div class="split-col">
+                    <div class="metric-strip">
+                        <div class="metric-label">Accumulation Phase</div>
+                        <div class="metric-kpi">₹{{ "{:,.0f}".format(goal.future_value) }}</div>
+                        <div>Corpus needed by retirement age</div>
+                        <div class="inline-note">Required monthly SIP: ₹{{ "{:,.0f}".format(goal.required_sip) }}</div>
+                    </div>
+                </div>
+                <div class="split-col">
+                    <div class="metric-strip">
+                        <div class="metric-label">Distribution Phase</div>
+                        <div class="metric-kpi">₹{{ "{:,.0f}".format(goal.distribution_phase.get('annuity_corpus_required', 0)) }}</div>
+                        <div>Corpus to sustain ₹{{ "{:,.0f}".format(goal.distribution_phase.get('monthly_income', 0)) }}/month for {{ goal.distribution_phase.get('years', 25) }} years</div>
+                        <div class="inline-note">
+                            {{ "Shortfall" if goal.distribution_phase.get('shortfall_or_surplus', 0) < 0 else "Surplus" }}:
+                            ₹{{ "{:,.0f}".format(goal.distribution_phase.get('shortfall_or_surplus', 0) | abs) }}
+                        </div>
+                        {% if goal.distribution_phase.get('additional_sip_required', 0) > 0 %}
+                        <div class="inline-note">You need to increase your SIP by ₹{{ "{:,.0f}".format(goal.distribution_phase.get('additional_sip_required', 0)) }} to cover post-retirement income needs.</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
         </div>
         {% endfor %}
     </div>
 
-    <!-- 13. DISCLAIMER -->
-    <div class="disclaimer">
-        <h2>13. Important Disclosure</h2>
-        <p>{{ disclaimer }}</p>
+    <div class="section">
+        <h2>5. Existing Portfolio Health</h2>
+        <div class="split-two">
+            <div class="split-col">
+                <div class="metric-strip">
+                    <div class="metric-label">Total Corpus</div>
+                    <div class="metric-kpi">₹{{ "{:,.0f}".format(portfolio.get('total_corpus', 0)) }}</div>
+                </div>
+            </div>
+            <div class="split-col">
+                <div class="metric-strip">
+                    <div class="metric-label">Net Worth</div>
+                    <div class="metric-kpi">₹{{ "{:,.0f}".format(portfolio.get('net_worth', 0)) }}</div>
+                </div>
+            </div>
+            <div class="split-col">
+                <div class="metric-strip">
+                    <div class="metric-label">Diversification Score</div>
+                    <div class="metric-kpi">{{ "{:.1f}".format(portfolio.get('diversification_score', 0)) }}/10</div>
+                </div>
+            </div>
+        </div>
+        {% for insight in portfolio.get('insights_v2', []) %}
+        <div class="insight-card {{ insight.type }}">
+            <strong>{{ insight.headline }}</strong><br>
+            {{ insight.text }}
+        </div>
+        {% endfor %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Asset Bucket</th>
+                    <th>Current Allocation</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for asset, weight in portfolio.get('breakdown', {}).items() %}
+                <tr>
+                    <td>{{ asset }}</td>
+                    <td>{{ "{:.2f}".format(weight) }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr class="source-row">
+                    <td colspan="2">{{ portfolio.get('source_note', '') }}</td>
+                </tr>
+            </tfoot>
+        </table>
     </div>
 
-</body>
+    <div class="section">
+        <h2>6. Insurance & Liability Summary</h2>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Insurance / Liability</th>
+                    <th>Current</th>
+                    <th>Recommended / Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Term Cover</td>
+                    <td>₹{{ "{:,.0f}".format(insurance.get('life_cover', 0)) }}</td>
+                    <td>₹{{ "{:,.0f}".format(insurance.get('recommended_term_cover', 0)) }}</td>
+                </tr>
+                <tr>
+                    <td>Health Cover</td>
+                    <td>₹{{ "{:,.0f}".format(insurance.get('health_cover', 0)) }}</td>
+                    <td>{{ "Adequate" if insurance.get('health_gap', 0) <= 0 else "Upgrade recommended" }}</td>
+                </tr>
+                <tr>
+                    <td>Total Liabilities</td>
+                    <td>₹{{ "{:,.0f}".format(insurance.get('total_liabilities', 0)) }}</td>
+                    <td>EMI ₹{{ "{:,.0f}".format(insurance.get('total_emi', 0)) }}/month</td>
+                </tr>
+            </tbody>
+            <tfoot>
+                <tr class="source-row">
+                    <td colspan="3">{{ insurance.get('source_note', '') }}</td>
+                </tr>
+            </tfoot>
+        </table>
+        {% if insurance.get('loans') %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Loan Type</th>
+                    <th>Outstanding Principal</th>
+                    <th>Monthly EMI</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for loan in insurance.get('loans', []) %}
+                <tr>
+                    <td>{{ loan.type }}</td>
+                    <td>₹{{ "{:,.0f}".format(loan.outstanding_principal) }}</td>
+                    <td>₹{{ "{:,.0f}".format(loan.emi) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr class="source-row">
+                    <td colspan="3">{{ insurance.get('source_note', '') }}</td>
+                </tr>
+            </tfoot>
+        </table>
+        {% endif %}
+    </div>
 
+    <div class="section page-break">
+        <h2>7. Target Asset Allocation</h2>
+        <p><strong>Reasoning:</strong> {{ allocation.reasoning }}</p>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Asset Class</th>
+                    <th>Target Weight</th>
+                    <th>Reasoning</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for asset in allocation.targets %}
+                <tr>
+                    <td>{{ asset.name }}</td>
+                    <td>{{ "{:.2f}".format(asset.percent) }}%</td>
+                    <td>{{ asset.rationale }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr class="source-row">
+                    <td colspan="3">{{ allocation.get('source_note', '') }}</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>8. Investment Mode Recommendation</h2>
+        <div class="mode-card">
+            <h3>{{ investment_mode.title }}</h3>
+            <p><strong>Trigger Reason:</strong> {{ investment_mode.trigger_reason }}</p>
+            <p><strong>Deployment Plan:</strong> {{ investment_mode.deployment_plan }}</p>
+            <p><strong>Expected Advantage vs Flat SIP:</strong> {{ investment_mode.expected_advantage_vs_flat_sip }}</p>
+        </div>
+        <table class="data-table">
+            <tfoot>
+                <tr class="source-row">
+                    <td>{{ investment_mode.get('source_note', '') }}</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>9. Mutual Fund Recommendations</h2>
+        {% for fund in funds %}
+        <div class="benchmark-card">
+            <h3>{{ fund.name }} <span style="font-size: 11px; color: #64748b;">({{ fund.category }})</span></h3>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Target Weight</th>
+                        <th>AI Score</th>
+                        <th>Benchmark</th>
+                        <th>1Y Alpha</th>
+                        <th>3Y Alpha</th>
+                        <th>Information Ratio</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>{{ "{:.2f}".format(fund.weight) }}%</td>
+                        <td>{{ "{:.1f}".format(fund.score) }}/100</td>
+                        <td>{{ fund.benchmark_index }}</td>
+                        <td>{{ "{:+.2f}".format(fund.alpha_1y) }}%</td>
+                        <td>{{ "{:+.2f}".format(fund.alpha_3y) }}%</td>
+                        <td>{{ "{:.2f}".format(fund.information_ratio) }}</td>
+                    </tr>
+                </tbody>
+                <tfoot>
+                    <tr class="source-row">
+                        <td colspan="6">Source: Recommendation Engine + benchmark fixture | As of {{ today }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+            <p><strong>Why Selected:</strong> {{ fund.why_selected }}</p>
+            <p><strong>Why Now:</strong> {{ fund.why_now }}</p>
+            <p><strong>Risk Note:</strong> {{ fund.risk_note }}</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="section">
+        <h2>10. Scenario Projections</h2>
+        <div class="assumptions-panel">
+            <strong>Assumptions Used</strong><br>
+            Inflation Rate: {{ scenarios.assumptions.inflation_rate }}<br>
+            Expected ROI: {{ scenarios.assumptions.expected_roi }}<br>
+            Base Return Scenarios:
+            {% for label, value in scenarios.assumptions.base_return_scenarios.items() %}
+                {{ label.title() }} {{ value }}{% if not loop.last %}, {% endif %}
+            {% endfor %}<br>
+            SIP Top-Up Rate: {{ scenarios.assumptions.sip_topup_rate }}<br>
+            Tax Treatment: {{ scenarios.assumptions.tax_treatment }}
+        </div>
+        <h3>SIP Projection Timeline</h3>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Year</th>
+                    <th>Cumulative Invested Amount</th>
+                    <th>Projected Value</th>
+                    <th>Wealth Created</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in scenarios.projections %}
+                <tr>
+                    <td>{{ row.year }}</td>
+                    <td>₹{{ "{:,.0f}".format(row.invested) }}</td>
+                    <td>₹{{ "{:,.0f}".format(row.projected_value) }}</td>
+                    <td>₹{{ "{:,.0f}".format(row.wealth_created) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr class="source-row">
+                    <td colspan="4">{{ scenarios.get('source_note', '') }}</td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <h3>Expected Returns (Goal Horizon)</h3>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Market Scenario</th>
+                    <th>Return Assumption</th>
+                    <th>Projected Corpus</th>
+                    <th>Inflation-Adjusted Corpus</th>
+                    <th>Probability of Achieving Goal</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in scenarios.goal_horizon %}
+                <tr>
+                    <td>{{ row.scenario }}</td>
+                    <td>{{ row.return_assumption }}</td>
+                    <td>₹{{ "{:,.0f}".format(row.final_corpus) }}</td>
+                    <td>₹{{ "{:,.0f}".format(row.inflation_adjusted_corpus) }}</td>
+                    <td>{{ "{:.1f}%".format(row.probability) if row.probability is not none else "N/A" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr class="source-row">
+                    <td colspan="5">{{ scenarios.get('source_note', '') }}</td>
+                </tr>
+            </tfoot>
+        </table>
+
+        {% if scenarios.get('step_up_comparison') and scenarios.step_up_comparison[0] %}
+        <h3>Step-Up SIP Comparison</h3>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Mode</th>
+                    <th>Monthly SIP (Year 1)</th>
+                    <th>Corpus at Goal</th>
+                    <th>Total Invested</th>
+                    <th>Wealth Multiplier</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in scenarios.step_up_comparison %}
+                <tr>
+                    <td>{{ row.mode }}</td>
+                    <td>₹{{ "{:,.0f}".format(row.monthly_sip_year_1) }}</td>
+                    <td>₹{{ "{:,.0f}".format(row.corpus_at_goal) }}</td>
+                    <td>₹{{ "{:,.0f}".format(row.total_invested) }}</td>
+                    <td>{{ "{:.2f}".format(row.wealth_multiplier) }}x</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr class="source-row">
+                    <td colspan="5">{{ scenarios.get('source_note', '') }}</td>
+                </tr>
+            </tfoot>
+        </table>
+        {% if scenarios.get('step_up_note') %}
+        <p class="inline-note">{{ scenarios.step_up_note }}</p>
+        {% endif %}
+        {% endif %}
+    </div>
+
+    <div class="section">
+        <h2>11. Monte Carlo Simulation</h2>
+        <div class="insight-card {{ 'success' if monte_carlo.prob >= 80 else ('warning' if monte_carlo.prob >= 50 else 'danger') }}">
+            <strong>Confidence Score: {{ "{:.1f}".format(monte_carlo.prob) }}%</strong><br>
+            {{ monte_carlo.interpretation }}
+        </div>
+        {% if monte_carlo.get('fix_recommendation') %}
+        <div class="assumptions-panel">
+            <strong>Fix Recommendation</strong><br>
+            {{ monte_carlo.fix_recommendation.gap_analysis }}<br>
+            Option 1: {{ monte_carlo.fix_recommendation.option_1 }}<br>
+            Option 2: {{ monte_carlo.fix_recommendation.option_2 }}<br>
+            Option 3: {{ monte_carlo.fix_recommendation.option_3 }}<br>
+            <strong>Recommended:</strong> {{ monte_carlo.fix_recommendation.recommended }}
+        </div>
+        {% endif %}
+        <img src="{{ charts.sensitivity }}" class="chart-img" alt="Sensitivity Analysis Chart">
+        <table class="data-table">
+            <tfoot>
+                <tr class="source-row">
+                    <td>{{ monte_carlo.get('source_note', '') }}</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    <div class="section page-break">
+        <h2>12. Score Standards Reference</h2>
+        <p>This appendix explains the methodology, mathematical basis, benchmark thresholds, and macro context behind each score used in this report.</p>
+        {% for standard in standards %}
+        <div class="appendix-entry">
+            <h3>{{ standard.score_name }} ({{ standard.scale }})</h3>
+            <p><strong>Target Benchmark:</strong> {{ standard.target_benchmark }}</p>
+            <p><strong>User-Facing Summary:</strong> {{ standard.user_facing_summary }}</p>
+            <p><strong>Mathematical Basis:</strong> {{ standard.mathematical_basis }}</p>
+            <p><strong>Geopolitical Context:</strong> {{ standard.geopolitical_basis }}</p>
+            <p><strong>Historical Calibration:</strong> {{ standard.historical_calibration }}</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="section disclaimer">
+        <h2>13. Disclaimer</h2>
+        <p>{{ disclaimer }}</p>
+    </div>
+</body>
 </html>

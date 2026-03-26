@@ -4,6 +4,7 @@ Tests for backend/processors/explainability.py
 import pytest
 from backend.processors.explainability import (
     explain_risk_profile,
+    explain_fund_rationale,
     explain_fund_recommendation,
     explain_all_funds,
     explain_portfolio_health,
@@ -113,6 +114,14 @@ class TestExplainRiskProfile:
 # ── explain_fund_recommendation ──────────────────────────────────────────────
 
 class TestExplainFundRecommendation:
+    def test_structured_rationale_contains_three_parts(self):
+        rationale = explain_fund_rationale(
+            _fund() | {"benchmark_index": "Nifty 50 TRI", "alpha_3y": 4.2}
+        )
+        assert "why_selected" in rationale
+        assert "why_now" in rationale
+        assert "risk_note" in rationale
+
     def test_returns_non_empty_string(self):
         reason = explain_fund_recommendation(_fund())
         assert isinstance(reason, str) and len(reason) > 20
@@ -151,6 +160,7 @@ class TestExplainAllFunds:
         result = explain_all_funds(funds)
         assert result[0]["name"] == "Fund X"
         assert isinstance(result[0]["reason"], str) and len(result[0]["reason"]) > 10
+        assert "rationale" in result[0]
 
     def test_empty_list(self):
         result = explain_all_funds([])

@@ -22,6 +22,7 @@ def generate_financial_report(
     monte_carlo: dict,
     scenarios: dict,
     investment_mode: dict,
+    executive_summary: dict | None = None,
     output_path: str = "report_v2.pdf",
 ):
     """
@@ -34,7 +35,9 @@ def generate_financial_report(
     # 1. Generate Charts
     charts = {
         "risk_factors": generate_risk_factor_chart(risk_data.get("explanation", {})),
-        "sensitivity": generate_sensitivity_chart(monte_carlo.get("prob", 0)),
+        "sensitivity": generate_sensitivity_chart(
+            monte_carlo.get("sensitivity_analysis") or monte_carlo.get("prob", 0)
+        ),
         "score_dashboard": generate_score_gauges({
             "Risk": risk_data.get("score", 0),
             "Diversification": portfolio_data.get("diversification_score", 0),
@@ -58,6 +61,7 @@ def generate_financial_report(
     # 4. Render HTML
     html_out = template.render(
         today=datetime.now().strftime("%d %b %Y"),
+        executive_summary=executive_summary or {},
         client=client_data,
         risk=risk_data,
         goals=goals,

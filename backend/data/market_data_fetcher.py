@@ -20,6 +20,7 @@ DEFAULT_ASSUMPTIONS = {
     "Equity - Flexi Cap": {"return": 0.14, "volatility": 0.18},
     "Equity - Sectoral": {"return": 0.16, "volatility": 0.22},
     "Equity - Hybrid": {"return": 0.11, "volatility": 0.12},
+    "Bonds": {"return": 0.082, "volatility": 0.05},
     "Debt": {"return": 0.075, "volatility": 0.04},
     "Gold": {"return": 0.09, "volatility": 0.15},
 }

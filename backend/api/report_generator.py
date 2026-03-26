@@ -3,6 +3,53 @@ from datetime import datetime
 import json
 
 
+def _extract_macro_value(value: Any, default: float = 0.0) -> float:
+    if isinstance(value, dict):
+        return float(value.get("value", default) or default)
+    if value is None:
+        return float(default)
+    return float(value)
+
+
+def _extract_macro_source(value: Any, default: str = "Fallback macro context") -> str:
+    if isinstance(value, dict):
+        return str(value.get("source") or default)
+    return default
+
+
+def _extract_macro_time(value: Any, default: Optional[str] = None) -> Optional[str]:
+    if isinstance(value, dict):
+        return value.get("fetched_at") or default
+    return default
+
+
+def _format_as_of(value: Optional[str]) -> str:
+    if not value:
+        return datetime.now().strftime("%d %b %Y, %I:%M %p")
+    try:
+        dt = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        return dt.strftime("%d %b %Y, %I:%M %p")
+    except ValueError:
+        return str(value)
+
+
+def _safe_pct(value: Any, default: float = 0.0) -> float:
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        return default
+    return numeric * 100.0 if abs(numeric) <= 1.0 else numeric
+
+
+def _severity_to_class(severity: str) -> str:
+    mapping = {"high": "danger", "medium": "warning", "low": "success"}
+    return mapping.get(str(severity).lower(), "warning")
+
+
+def _source_row(source: str, as_of: Optional[str]) -> str:
+    return f"Source: {source} | As of {_format_as_of(as_of)}"
+
+
 class ReportGenerator:
     def __init__(self):
         self.report_data = {}
@@ -461,38 +508,103 @@ def generate_report_v2_data(client_data: Dict[str, Any], analysis_data: Dict[str
     """
     Synthesizes all raw engine outputs into the structured format required by the V2 PDF template.
     """
-    from backend.insurance.gap_analyzer import generate_insurance_recommendations, calculate_health_insurance_gap, analyze_insurance_gap
-    from backend.funds.investment_mode import get_recommended_strategy
-    
+    from backend.engines.explanation_standards import get_score_reasoning
+    from backend.engines.projection_engine import generate_projection_table
+    from backend.insurance.gap_analyzer import (
+        analyze_insurance_gap,
+        calculate_health_insurance_gap,
+        generate_insurance_recommendations,
+    )
+    from backend.processors.explainability import explain_all_funds
+    from backend.processors.output_formatter import build_projection_assumptions
+    from backend.scoring.monte_carlo_remediation import (
+        build_sensitivity_analysis,
+        generate_fix_recommendation,
+    )
+
+    today = datetime.now().strftime("%d %b %Y")
+    now_iso = datetime.now().isoformat()
+
+    insurance_inputs = client_data.get("insurance_inputs", {})
+    outstanding_loans = insurance_inputs.get("outstanding_loans", [])
+    existing_ins = client_data.get("existing_insurance", {})
+    macro_raw = analysis_data.get("macro", {})
+    inflation_meta = macro_raw.get("inflation", {})
+    policy_meta = macro_raw.get("policy_rate", macro_raw.get("repo_rate", {}))
+    macro_source = macro_raw.get("source", "fallback")
+    macro_as_of = _extract_macro_time(inflation_meta, macro_raw.get("fetched_at", now_iso))
+
     # 1. Profile & Basic Data
     profile = {
         "age": client_data.get("age", 30),
         "dependents": client_data.get("dependents", 0),
         "monthly_income": client_data.get("monthly_income", 100000),
         "monthly_savings": client_data.get("monthly_savings", 20000),
+        "effective_monthly_savings": client_data.get(
+            "effective_monthly_savings", client_data.get("monthly_savings", 20000)
+        ),
         "behavior": client_data.get("behavior", "Moderate"),
-        "total_liabilities": client_data.get("total_liabilities", 0)
+        "existing_corpus": float(client_data.get("existing_corpus", 0.0)),
+        "total_liabilities": client_data.get("total_liabilities", 0),
+        "term_life_cover": float(insurance_inputs.get("term_life_cover", 0.0)),
+        "health_cover": float(insurance_inputs.get("health_cover", 0.0)),
+        "annual_insurance_premium": float(
+            insurance_inputs.get("annual_insurance_premium", 0.0)
+        ),
+        "emi_total": float(client_data.get("emi_total", 0.0)),
+        "source_note": _source_row("Client declaration", now_iso),
     }
 
     # 2. Risk Profile
     risk_raw = analysis_data.get("risk", {})
+    risk_standard = get_score_reasoning("Risk Score")
+    risk_explanation = risk_raw.get("explanation") or risk_raw.get("feature_contributions") or {
+        "Age": 2.0,
+        "Dependents": -0.5,
+        "Income": 1.5,
+        "Behavior": 2.0,
+    }
     risk = {
         "score": risk_raw.get("score", 5.0),
         "category": risk_raw.get("category", "Moderate"),
-        "explanation": risk_raw.get("explanation", {
-            "Age": 2.0, "Dependents": -0.5, "Income": 1.5, "Behavior": 2.0
-        })
+        "explanation": risk_explanation,
+        "methodology_note": risk_standard.user_facing_summary,
+        "mathematical_basis": risk_standard.mathematical_basis,
+        "source_note": _source_row("Risk Engine + client profile", now_iso),
     }
 
     # 3. Goals
     goals_raw = analysis_data.get("goals", [])
     goals = []
+    primary_goal = goals_raw[0] if goals_raw else {}
+    inflation_rate = _extract_macro_value(inflation_meta, 0.06)
+    inflation_source = _extract_macro_source(inflation_meta, "Fallback macro context")
+    base_roi = float(
+        primary_goal.get("expected_return_rate", client_data.get("projection_base_roi", 0.12))
+        or 0.12
+    )
+    topup_rate = float(
+        primary_goal.get(
+            "annual_sip_step_up",
+            client_data.get("annual_sip_step_up_pct", 10.0) / 100.0,
+        )
+        or 0.0
+    )
     for g in goals_raw:
         sip_comparison = g.get("sip_comparison", {})
-        roi_value = float(g.get("expected_return_rate", g.get("return_pct", 0.12)))
-        inflation_value = float(g.get("inflation_rate", 0.06))
+        roi_value = float(g.get("expected_return_rate", g.get("return_pct", base_roi)))
+        inflation_value = float(g.get("inflation_rate", inflation_rate))
+        goal_name = g.get("goal_name", g.get("name", "Goal"))
+        assumptions = build_projection_assumptions(
+            inflation_rate=inflation_value,
+            inflation_source=inflation_source,
+            roi=roi_value,
+            roi_basis=f"{goal_name} projection base-case assumption",
+            sip_topup_rate=float(g.get("annual_sip_step_up", topup_rate)),
+        )
+        distribution_phase = g.get("distribution_phase", {})
         goals.append({
-            "name": g.get("name", "Goal"),
+            "name": goal_name,
             "years": g.get("years_to_goal", 10),
             "future_value": g.get("future_corpus", 0),
             "roi": round(roi_value * 100 if roi_value <= 1 else roi_value, 2),
@@ -500,47 +612,68 @@ def generate_report_v2_data(client_data: Dict[str, Any], analysis_data: Dict[str
                 inflation_value * 100 if inflation_value <= 1 else inflation_value, 2
             ),
             "required_sip": g.get("required_sip", 0),
-            "step_up": sip_comparison.get("annual_step_up_pct", g.get("annual_sip_step_up", 0.10) * 100),
+            "step_up": sip_comparison.get(
+                "annual_step_up_pct",
+                float(g.get("annual_sip_step_up", topup_rate)) * 100,
+            ),
             "sip_comparison": sip_comparison,
-            "annuity": g.get("future_corpus", 0) * 0.005 # Mock annuity rule
+            "annuity": distribution_phase.get("annuity_corpus_required", 0.0),
+            "distribution_phase": distribution_phase,
+            "assumptions": assumptions,
+            "source_note": _source_row(
+                f"{goal_name} planning engine",
+                macro_as_of,
+            ),
         })
 
     # 4. Insurance & Liabilities
-    existing_ins = client_data.get("existing_insurance", {})
-    insurance_inputs = client_data.get("insurance_inputs", {})
-    outstanding_loans = insurance_inputs.get("outstanding_loans", [])
     total_liabilities = sum(
         float(loan.get("outstanding_principal", 0.0)) for loan in outstanding_loans
     )
     total_emi = sum(float(loan.get("emi", 0.0)) for loan in outstanding_loans)
     recommended_term_cover = float(profile.get("monthly_income", 0.0)) * 12.0 * 10.0
+    insurance_gap = analyze_insurance_gap(profile, existing_ins)
     insurance = {
-        "life_cover": existing_ins.get("term", 0),
-        "life_gap": analyze_insurance_gap(profile, existing_ins).get("term_gap", 0),
-        "health_cover": existing_ins.get("health", 0),
+        "life_cover": insurance_inputs.get("term_life_cover", existing_ins.get("term", 0)),
+        "life_gap": insurance_gap.get("term_gap", 0),
+        "health_cover": insurance_inputs.get("health_cover", existing_ins.get("health", 0)),
         "health_gap": calculate_health_insurance_gap(profile, existing_ins).get("gap", 0),
         "annual_insurance_premium": insurance_inputs.get("annual_insurance_premium", 0.0),
         "recommended_term_cover": recommended_term_cover,
         "total_liabilities": total_liabilities,
         "total_emi": total_emi,
         "loans": outstanding_loans,
-        "recommendations": generate_insurance_recommendations(profile, existing_ins)
+        "recommendations": generate_insurance_recommendations(profile, existing_ins),
+        "source_note": _source_row("Insurance inputs + liability schedule", now_iso),
     }
 
     # 5. Portfolio Health & Insights
     portfolio_raw = analysis_data.get("portfolio", {})
-    div_score = portfolio_raw.get("diversification_score", 7.0)
-    
-    # Generate dynamic insights v2
-    insights_v2 = []
-    if div_score < 8.0:
-        insights_v2.append({"type": "warning", "headline": "Diversification Trap", "text": "High concentration in single-cap funds identified."})
-    else:
-        insights_v2.append({"type": "success", "headline": "Well Balanced", "text": "Portfolio effectively covers Equity, Debt, and Gold."})
-    
-    if profile["monthly_savings"] < goals[0]["required_sip"] if goals else False:
-        insights_v2.append({"type": "danger", "headline": "Savings Shortfall", "text": "Current savings capacity is 30% below required levels for primary goals."})
-
+    div_score = float(portfolio_raw.get("diversification_score", 7.0))
+    prioritized_insights = portfolio_raw.get("prioritized_insights", [])
+    if not prioritized_insights and portfolio_raw.get("insights", []):
+        prioritized_insights = [
+            {"severity": "medium", "icon": "WARN", "message": message}
+            for message in portfolio_raw.get("insights", [])
+        ]
+    insight_cards = []
+    for insight in prioritized_insights:
+        severity = str(insight.get("severity", "medium")).lower()
+        icon = insight.get("icon", "")
+        message = insight.get("message", "")
+        headline = {
+            "high": "Action Required",
+            "medium": "Attention",
+            "low": "On Track",
+        }.get(severity, "Attention")
+        insight_cards.append(
+            {
+                "type": _severity_to_class(severity),
+                "severity": severity,
+                "headline": f"{icon} {headline}".strip(),
+                "text": message,
+            }
+        )
     portfolio = {
         "total_corpus": portfolio_raw.get("total_corpus", 0.0),
         "net_worth": portfolio_raw.get(
@@ -548,77 +681,257 @@ def generate_report_v2_data(client_data: Dict[str, Any], analysis_data: Dict[str
         ),
         "total_liabilities": portfolio_raw.get("total_liabilities", total_liabilities),
         "diversification_score": div_score,
-        "insights_v2": insights_v2
+        "risk_exposure": portfolio_raw.get("risk_exposure", "Not available"),
+        "breakdown": portfolio_raw.get("breakdown", {}),
+        "insights_v2": insight_cards,
+        "source_note": _source_row("Portfolio Health Engine", macro_as_of),
     }
 
     # 6. Allocation & Macro
-    macro_raw = analysis_data.get("macro", {})
     macro = {
-        "stability": macro_raw.get("stability_score", 0.8) * 100,
-        "ai_market_score": macro_raw.get("ai_market_score", 85)
+        "stability": _safe_pct(
+            macro_raw.get("market_stability_score", macro_raw.get("stability_score", 0.8)),
+            80.0,
+        ),
+        "ai_market_score": float(
+            macro_raw.get(
+                "ai_market_score",
+                sum(float(f.get("score", 0.0)) for f in analysis_data.get("funds", [])[:3]) / max(len(analysis_data.get("funds", [])[:3]), 1)
+                if analysis_data.get("funds")
+                else 85,
+            )
+        ),
+        "inflation_rate": inflation_rate,
+        "inflation_source": inflation_source,
+        "policy_rate": _extract_macro_value(policy_meta, 6.5),
+        "policy_source": _extract_macro_source(policy_meta, "RBI"),
+        "source": macro_source,
+        "as_of": _format_as_of(macro_as_of),
     }
-    
+
+    allocation_raw = analysis_data.get("allocation", {})
+    allocation_map = allocation_raw.get("allocation", allocation_raw.get("adjusted_allocation", {}))
+    if not allocation_map:
+        allocation_map = {
+            "Large Cap Equity": 40,
+            "Mid/Small Cap": 30,
+            "Debt / Fixed Income": 20,
+            "Gold / Alt": 10,
+        }
     allocation = {
         "targets": [
-            {"name": "Large Cap Equity", "percent": 40, "rationale": "Core stability and benchmark tracking."},
-            {"name": "Mid/Small Cap", "percent": 30, "rationale": "Alpha generation for long-horizon goals."},
-            {"name": "Debt / Fixed Income", "percent": 20, "rationale": "Capital preservation and volatility dampening."},
-            {"name": "Gold / Alt", "percent": 10, "rationale": "Hedge against systemic macro shocks."}
-        ]
+            {
+                "name": asset,
+                "percent": round(float(weight), 2),
+                "rationale": (
+                    "Core growth exposure."
+                    if "equity" in asset.lower()
+                    else "Capital preservation and volatility dampening."
+                    if "debt" in asset.lower() or "bond" in asset.lower()
+                    else "Macro hedge and diversification."
+                ),
+            }
+            for asset, weight in allocation_map.items()
+        ],
+        "reasoning": (
+            f"Based on Risk Score {risk['score']:.1f} and current Market Stability "
+            f"{macro['stability']:.0f}%."
+        ),
+        "source_note": _source_row("Allocation Engine + macro overlay", macro_as_of),
     }
 
     # 7. Investment Mode
-    mode_raw = get_recommended_strategy(profile, {"vix": 18, "nifty_signal": "neutral"})
+    mode_raw = analysis_data.get("investment_mode_recommendation") or analysis_data.get("investment_mode") or {}
     investment_mode = {
-        "title": mode_raw.get("primary_mode", "SIP"),
-        "description": mode_raw.get("rationale", "Systematic entry recommended.")
+        "title": mode_raw.get("recommended_mode", mode_raw.get("primary_mode", "SIP")),
+        "description": mode_raw.get("trigger_reason", mode_raw.get("rationale", "Systematic entry recommended.")),
+        "trigger_reason": mode_raw.get("trigger_reason", "Market conditions favour phased deployment."),
+        "deployment_plan": mode_raw.get("deployment_plan", "Deploy via SIP over the next 6-12 months."),
+        "expected_advantage_vs_flat_sip": mode_raw.get(
+            "expected_advantage_vs_flat_sip",
+            "Designed to improve deployment timing versus a flat SIP path.",
+        ),
+        "source_note": _source_row("Investment Mode Engine", macro_as_of),
     }
 
     # 8. Funds
     funds_raw = analysis_data.get("funds", [])
+    fund_explanations = {item["name"]: item for item in explain_all_funds(funds_raw)}
     funds = []
     for f in funds_raw:
+        explanation = fund_explanations.get(f.get("name", ""), {})
+        rationale = explanation.get("rationale", {})
         funds.append({
             "name": f.get("name", "Unknown Fund"),
-            "ai_reason": f.get("ai_reason", "High persistence in risk-adjusted returns."),
-            "alpha": f.get("alpha", 2.1),
-            "weight": f.get("weight", 20),
-            "score": f.get("ai_score", 85)
+            "category": f.get("category", "N/A"),
+            "ai_reason": explanation.get("reason", f.get("reason", "High persistence in risk-adjusted returns.")),
+            "weight": f.get("allocation_weight", f.get("weight", 20)),
+            "score": f.get("score", f.get("ai_score", 85)),
+            "benchmark_index": f.get("benchmark_index", "Benchmark"),
+            "benchmark_1y_return": f.get("benchmark_1y_return", 0.0),
+            "benchmark_3y_return": f.get("benchmark_3y_return", 0.0),
+            "alpha_1y": f.get("alpha_1y", 0.0),
+            "alpha_3y": f.get("alpha_3y", f.get("alpha", 0.0)),
+            "information_ratio": f.get("information_ratio", 0.0),
+            "why_selected": rationale.get("why_selected", ""),
+            "why_now": rationale.get("why_now", ""),
+            "risk_note": rationale.get("risk_note", ""),
         })
 
     # 9. Scenarios & Projections
-    primary_goal_raw = goals_raw[0] if goals_raw else {}
+    primary_goal_raw = primary_goal
     primary_sip_comparison = primary_goal_raw.get("sip_comparison", {})
+    goal_years = int(primary_goal_raw.get("years_to_goal", 10) or 10)
+    monthly_savings_capacity = float(
+        client_data.get("effective_monthly_savings", client_data.get("monthly_savings", 0.0))
+    )
+    existing_corpus = float(client_data.get("existing_corpus", 0.0))
+    timeline_df = generate_projection_table(
+        initial_investment=existing_corpus,
+        monthly_sip=monthly_savings_capacity,
+        annual_return_rate=base_roi,
+        years=goal_years,
+    )
+    timeline_rows = [
+        {
+            "year": int(row["year"]),
+            "invested": float(row["invested"]),
+            "projected_value": float(row["total_value"]),
+            "wealth_created": float(row["returns"]),
+        }
+        for _, row in timeline_df.iterrows()
+    ]
+    scenario_rows = []
+    for scenario_name, scenario_return in (
+        ("Conservative", 0.08),
+        ("Moderate", 0.12),
+        ("Aggressive", 0.15),
+    ):
+        projection_df = generate_projection_table(
+            initial_investment=existing_corpus,
+            monthly_sip=monthly_savings_capacity,
+            annual_return_rate=scenario_return,
+            years=goal_years,
+        )
+        projected_corpus = float(projection_df.iloc[-1]["total_value"]) if not projection_df.empty else existing_corpus
+        inflation_adjusted = projected_corpus / ((1 + inflation_rate) ** goal_years) if goal_years > 0 else projected_corpus
+        probability = None
+        if scenario_name == "Moderate":
+            probability = analysis_data.get("monte_carlo", {}).get("success_probability")
+        scenario_rows.append(
+            {
+                "scenario": scenario_name,
+                "return_assumption": f"{scenario_return:.0%}",
+                "final_corpus": round(projected_corpus, 2),
+                "inflation_adjusted_corpus": round(inflation_adjusted, 2),
+                "probability": probability,
+            }
+        )
     scenarios = {
-        "base_roi": 12.0,
+        "assumptions": build_projection_assumptions(
+            inflation_rate=inflation_rate,
+            inflation_source=inflation_source,
+            roi=base_roi,
+            roi_basis="Goal horizon base-case assumption",
+            sip_topup_rate=topup_rate,
+        ),
+        "base_roi": round(base_roi * 100, 2),
         "step_up_pct": primary_sip_comparison.get(
             "annual_step_up_pct",
             client_data.get("annual_sip_step_up_pct", 10.0),
         ),
-        "inflation_rate": 6.0,
+        "inflation_rate": round(inflation_rate * 100, 2),
         "inflation_adjusted": True,
-        "projections": [
-            {"year": 5, "base_val": profile["monthly_savings"] * 70, "step_val": profile["monthly_savings"] * 85},
-            {"year": 10, "base_val": profile["monthly_savings"] * 180, "step_val": profile["monthly_savings"] * 240},
-            {"year": 20, "base_val": profile["monthly_savings"] * 600, "step_val": profile["monthly_savings"] * 950}
-        ],
+        "projections": timeline_rows,
+        "goal_horizon": scenario_rows,
         "step_up_comparison": [
             primary_sip_comparison.get("flat", {}),
             primary_sip_comparison.get("step_up", {}),
         ],
         "step_up_note": primary_sip_comparison.get("note", ""),
+        "source_note": _source_row("Projection Engine + macro assumptions", macro_as_of),
     }
 
     # 10. Monte Carlo
     mc_raw = analysis_data.get("monte_carlo", {})
-    prob = mc_raw.get("success_probability", 75.0)
+    prob = float(mc_raw.get("success_probability", 75.0))
+    required_sip = float(primary_goal_raw.get("required_sip", 0.0))
+    fix_recommendation = None
+    if primary_goal_raw and prob < 80:
+        fix_recommendation = generate_fix_recommendation(
+            current_sip=monthly_savings_capacity,
+            required_sip=required_sip,
+            required_corpus=float(primary_goal_raw.get("future_corpus", 0.0)),
+            current_age=int(client_data.get("age", 30)),
+            retirement_age=int(client_data.get("goals", {}).get("retirement", {}).get("age", 60)),
+            current_monthly_expense=float(client_data.get("monthly_expense", 0.0)),
+            existing_corpus=existing_corpus,
+            expected_return=base_roi,
+        )
+    sensitivity = None
+    if primary_goal_raw and goal_years > 0 and required_sip > 0:
+        sensitivity = build_sensitivity_analysis(
+            current_sip=monthly_savings_capacity,
+            required_sip=required_sip,
+            initial_corpus=existing_corpus,
+            target_corpus=float(primary_goal_raw.get("future_corpus", 0.0)),
+            years=goal_years,
+            expected_return=base_roi,
+            annual_volatility=0.15,
+            points=10,
+        )
     monte_carlo = {
         "prob": prob,
-        "interpretation": "Strong likelihood of success under normal conditions." if prob >= 80 else "Requires intervention to improve probability.",
-        "fix_recommendation": "Consider increasing SIP by 15% or extending goal by 2 years."
+        "interpretation": "Strong likelihood of success under normal conditions." if prob >= 80 else "Confidence is below institutional comfort levels and needs remediation.",
+        "fix_recommendation": fix_recommendation,
+        "sensitivity_analysis": sensitivity,
+        "source_note": _source_row("Monte Carlo Engine (1,000 GBM paths)", macro_as_of),
+    }
+
+    score_dashboard = [
+        {
+            "label": "Risk",
+            "value": f"{risk['score']:.1f}/10",
+            "status": "On Track" if risk["score"] >= 7 else "Attention" if risk["score"] >= 5 else "Action Required",
+            "icon": "✅" if risk["score"] >= 7 else "⚠️" if risk["score"] >= 5 else "❌",
+        },
+        {
+            "label": "Diversification",
+            "value": f"{portfolio['diversification_score']:.1f}/10",
+            "status": "On Track" if portfolio["diversification_score"] >= 8 else "Attention" if portfolio["diversification_score"] >= 5 else "Action Required",
+            "icon": "✅" if portfolio["diversification_score"] >= 8 else "⚠️" if portfolio["diversification_score"] >= 5 else "❌",
+        },
+        {
+            "label": "AI Market",
+            "value": f"{macro['ai_market_score']:.0f}/100",
+            "status": "On Track" if macro["ai_market_score"] >= 80 else "Attention" if macro["ai_market_score"] >= 50 else "Action Required",
+            "icon": "✅" if macro["ai_market_score"] >= 80 else "⚠️" if macro["ai_market_score"] >= 50 else "❌",
+        },
+        {
+            "label": "Market Stability",
+            "value": f"{macro['stability']:.0f}%",
+            "status": "On Track" if macro["stability"] >= 80 else "Attention" if macro["stability"] >= 50 else "Action Required",
+            "icon": "✅" if macro["stability"] >= 80 else "⚠️" if macro["stability"] >= 50 else "❌",
+        },
+        {
+            "label": "Goal Confidence",
+            "value": f"{monte_carlo['prob']:.0f}%",
+            "status": "On Track" if monte_carlo["prob"] >= 80 else "Attention" if monte_carlo["prob"] >= 50 else "Action Required",
+            "icon": "✅" if monte_carlo["prob"] >= 80 else "⚠️" if monte_carlo["prob"] >= 50 else "❌",
+        },
+    ]
+
+    executive_summary = {
+        "overview": (
+            "This report combines client profile inputs, current macro conditions, "
+            "goal projections, and portfolio diagnostics into one deployment-ready plan."
+        ),
+        "score_dashboard": score_dashboard,
+        "source_note": _source_row("Integrated planning stack", now_iso),
     }
 
     return {
+        "executive_summary": executive_summary,
         "client": profile,
         "risk": risk,
         "goals": goals,
@@ -629,7 +942,7 @@ def generate_report_v2_data(client_data: Dict[str, Any], analysis_data: Dict[str
         "investment_mode": investment_mode,
         "funds": funds,
         "scenarios": scenarios,
-        "monte_carlo": monte_carlo
+        "monte_carlo": monte_carlo,
     }
 
 
@@ -640,6 +953,7 @@ def generate_full_report(client_data, analysis_data):
     
     # Trigger the PDF generation
     output_path = generate_financial_report(
+        executive_summary=v2_data.get("executive_summary", {}),
         client_data=v2_data["client"],
         risk_data=v2_data["risk"],
         goals=v2_data["goals"],

@@ -9,9 +9,26 @@ Exports suggest_mutual_funds so the rest of the app keeps the same import:
 import logging
 from typing import Any, Dict, List
 
+import pandas as pd
+
+from backend.engines.advanced_products_engine import (
+    get_advanced_product_eligibility,
+    recommend_bonds,
+)
+from backend.data.mutual_fund_api import get_mutual_fund_universe
+from backend.engines.fund_categorizer import categorize_funds
+from backend.engines.fund_performance_engine import apply_performance_metrics
 from .dynamic_recommender import run_dynamic_pipeline
 
 logger = logging.getLogger(__name__)
+
+
+def get_processed_fund_universe() -> tuple[pd.DataFrame, bool]:
+    df, is_live = get_mutual_fund_universe()
+    if df is not None and not df.empty:
+        df = categorize_funds(df)
+        df = apply_performance_metrics(df)
+    return df, is_live
 
 
 def _get_signals_with_fallback() -> Dict[str, Any]:
@@ -75,3 +92,18 @@ def suggest_mutual_funds(
 
     is_live = len(recommendations) > 0
     return recommendations, is_live
+
+
+def suggest_advanced_products(
+    allocation: Dict[str, Any],
+    annual_income: float,
+    net_worth: float,
+) -> Dict[str, Any]:
+    bond_weight = float(allocation.get("Bonds", 0.0))
+    return {
+        "bonds": recommend_bonds(target_weight=bond_weight),
+        "eligibility_cards": get_advanced_product_eligibility(
+            annual_income=annual_income,
+            net_worth=net_worth,
+        ),
+    }

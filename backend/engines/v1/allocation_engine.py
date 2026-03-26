@@ -1,5 +1,6 @@
 from typing import Dict, Any
 import numpy as np
+import pandas as pd
 from scipy.optimize import minimize
 from backend.data.market_data_fetcher import MarketDataFetcher
 
@@ -7,6 +8,28 @@ from backend.data.market_data_fetcher import MarketDataFetcher
 fetcher = MarketDataFetcher()
 # Attempt to load or compute stats
 stats, corr_matrix = fetcher.compute_statistics()
+
+if "Bonds" not in stats:
+    stats["Bonds"] = {"return": 0.082, "volatility": 0.05}
+
+if corr_matrix.empty:
+    corr_matrix = np.eye(len(stats))
+    corr_matrix = pd.DataFrame(corr_matrix, index=list(stats.keys()), columns=list(stats.keys()))
+
+if "Bonds" not in corr_matrix.index:
+    for asset in stats.keys():
+        if asset not in corr_matrix.index:
+            corr_matrix.loc[asset] = 0.0
+            corr_matrix[asset] = 0.0
+    corr_matrix = corr_matrix.reindex(index=list(stats.keys()), columns=list(stats.keys()), fill_value=0.0)
+    for asset in corr_matrix.index:
+        corr_matrix.loc[asset, asset] = 1.0
+    if "Debt" in corr_matrix.index:
+        corr_matrix.loc["Bonds", "Debt"] = 0.75
+        corr_matrix.loc["Debt", "Bonds"] = 0.75
+    if "Gold" in corr_matrix.index:
+        corr_matrix.loc["Bonds", "Gold"] = 0.10
+        corr_matrix.loc["Gold", "Bonds"] = 0.10
 
 
 def get_asset_allocation(risk_score: float) -> Dict[str, Any]:
@@ -50,6 +73,13 @@ def get_asset_allocation(risk_score: float) -> Dict[str, Any]:
     for asset in assets:
         if "Gold" in asset:
             bounds.append((0.0, 0.15))  # Max 15% Gold
+        elif "Bonds" in asset:
+            if risk_score >= 7.5:
+                bounds.append((0.0, 0.15))
+            elif risk_score <= 4.0:
+                bounds.append((0.10, 0.35))
+            else:
+                bounds.append((0.05, 0.25))
         elif "Debt" in asset:
             if risk_score >= 7.5:
                 bounds.append((0.0, 0.20))  # Aggressive: low debt cap

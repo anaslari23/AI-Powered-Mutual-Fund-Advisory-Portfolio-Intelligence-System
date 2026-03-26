@@ -26,6 +26,7 @@ def get_live_intelligence(
     base_allocation: Dict[str, float],
     recommended_funds: List[Dict[str, Any]],
     risk_category: str,
+    available_capital: float = 0.0,
     use_cache: bool = True,
 ) -> Dict[str, Any]:
     """
@@ -55,6 +56,7 @@ def get_live_intelligence(
         ``gold_delta``           – gold adjustment in pp
         ``adjustment_reasons``   – list of plain-English reason strings
         ``ranked_funds``         – funds re-scored for current market
+        ``investment_mode_recommendation`` – smart deployment recommendation
         ``narratives``           – dict of market_summary, allocation_rationale, risk_narrative
         ``last_updated``         – ISO timestamp of underlying data
         ``data_source``          – "live" | "partial" | "fallback"
@@ -86,6 +88,18 @@ def get_live_intelligence(
         from ai_layer.scoring_engine.fund_scoring import rank_funds
         ranked_funds = rank_funds(recommended_funds, signals)
 
+        # ── Smart deployment mode ────────────────────────────────────────────
+        from backend.engines.investment_mode_engine import recommend_investment_mode
+
+        investment_mode_recommendation = recommend_investment_mode(
+            market_signals={
+                **signals,
+                "market_stability_score": adaptive_result.get("market_stability_score"),
+                "nifty_pe": market_snapshot.get("nifty", {}).get("pe", 22.5),
+            },
+            available_capital=available_capital,
+        )
+
         # ── Narrative generation ──────────────────────────────────────────────
         from ai_layer.explanation_engine.narrative_builder import build_full_narrative
         narratives = build_full_narrative(
@@ -114,6 +128,7 @@ def get_live_intelligence(
             "gold_delta":          adaptive_result.get("gold_delta",   0.0),
             "adjustment_reasons":  adaptive_result.get("adjustment_reasons", []),
             "ranked_funds":        ranked_funds,
+            "investment_mode_recommendation": investment_mode_recommendation,
             "narratives":          narratives,
             "last_updated":        last_updated,
             "data_source":         data_source,
@@ -133,6 +148,16 @@ def get_live_intelligence(
             "gold_delta":          0.0,
             "adjustment_reasons":  ["AI layer data unavailable. Showing baseline allocation."],
             "ranked_funds":        recommended_funds,
+            "investment_mode_recommendation": {
+                "recommended_mode": "SIP",
+                "trigger_reason": "AI layer data unavailable, defaulting to staggered deployment.",
+                "deployment_plan": "Start a monthly SIP until live data recovers.",
+                "expected_advantage_vs_flat_sip": "Fallback mode in use.",
+                "market_stability_score": 0.5,
+                "nifty_pe": 22.5,
+                "available_capital": float(available_capital),
+                "supported_modes": ["Lumpsum", "SIP", "STP", "SWP", "SIP + Lumpsum hybrid"],
+            },
             "narratives":          {
                 "market_summary":       "Real-time market data is temporarily unavailable.",
                 "allocation_rationale": "Showing baseline allocation.",

@@ -1,0 +1,52 @@
+[
+  {
+    "name": "7.18% GS 2033",
+    "bond_type": "G-Secs",
+    "issuer": "Government of India",
+    "rating": "Sovereign",
+    "coupon_rate": 7.18,
+    "ytm": 7.05,
+    "maturity_date": "2033-08-14",
+    "tax_treatment": "Interest taxed at slab; capital gains as per holding period."
+  },
+  {
+    "name": "Maharashtra SDL 2031",
+    "bond_type": "State Dev Loans",
+    "issuer": "Government of Maharashtra",
+    "rating": "Sovereign-backed",
+    "coupon_rate": 7.42,
+    "ytm": 7.29,
+    "maturity_date": "2031-11-20",
+    "tax_treatment": "Interest taxed at slab; capital gains as per holding period."
+  },
+  {
+    "name": "REC Tax-Free Bond 2030",
+    "bond_type": "Tax-Free Bonds",
+    "issuer": "REC Limited",
+    "rating": "AAA",
+    "coupon_rate": 5.75,
+    "ytm": 5.92,
+    "maturity_date": "2030-12-03",
+    "tax_treatment": "Coupon interest tax-free; capital gains taxable on sale."
+  },
+  {
+    "name": "Power Finance Corp Bond 2029",
+    "bond_type": "Corporate Bonds (AAA/AA)",
+    "issuer": "Power Finance Corporation",
+    "rating": "AAA",
+    "coupon_rate": 7.85,
+    "ytm": 7.68,
+    "maturity_date": "2029-06-30",
+    "tax_treatment": "Interest taxed at slab; capital gains as per holding period."
+  },
+  {
+    "name": "Sovereign Gold Bond 2032-33",
+    "bond_type": "SGBs",
+    "issuer": "Government of India",
+    "rating": "Sovereign",
+    "coupon_rate": 2.50,
+    "ytm": 8.10,
+    "maturity_date": "2032-10-22",
+    "tax_treatment": "2.5% interest taxed at slab; redemption gains tax-exempt at maturity."
+  }
+]

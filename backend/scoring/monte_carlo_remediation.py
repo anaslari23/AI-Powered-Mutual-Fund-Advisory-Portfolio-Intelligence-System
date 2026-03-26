@@ -1,6 +1,7 @@
 from typing import Dict, Any, List, Tuple
 import numpy as np
 from scipy import stats
+from backend.utils.sip_calculator import calculate_sip_future_value
 
 np.random.seed(42)
 
@@ -218,6 +219,125 @@ def generate_remediation_options(
         "recommended_option": sorted_options[0]["option_id"]
         if sorted_options
         else None,
+    }
+
+
+def generate_fix_recommendation(
+    current_sip: float,
+    required_sip: float,
+    required_corpus: float,
+    current_age: int,
+    retirement_age: int,
+    current_monthly_expense: float,
+    existing_corpus: float,
+    expected_return: float,
+    annual_volatility: float = 0.15,
+) -> Dict[str, Any]:
+    pct = (current_sip / required_sip) if required_sip > 0 else 0.0
+    gap_sip = max(0.0, required_sip - current_sip)
+    years = max(0, int(retirement_age) - int(current_age))
+
+    option_1 = (
+        f"Increase monthly savings by ₹{gap_sip:,.0f} "
+        f"to meet the ₹{required_corpus:,.0f} corpus target."
+    )
+
+    from backend.engines.goal_engine import calculate_retirement_goal
+
+    extra_years = 0
+    adjusted_sip = required_sip
+    for k in range(1, 6):
+        new_ret_age = int(retirement_age) + k
+        new_ret = calculate_retirement_goal(
+            current_age=current_age,
+            current_monthly_expense=current_monthly_expense,
+            expected_return_rate=expected_return,
+            retirement_age=new_ret_age,
+            existing_corpus=existing_corpus,
+        )
+        new_required_sip = float(new_ret.get("required_sip", required_sip))
+        adjusted_sip = new_required_sip
+        if new_required_sip <= current_sip:
+            extra_years = k
+            break
+    if extra_years == 0:
+        extra_years = 5
+
+    option_2 = (
+        f"Extend retirement age by {extra_years} years — "
+        f"required SIP drops to ₹{adjusted_sip:,.0f}."
+    )
+
+    fv_existing = existing_corpus * ((1 + expected_return) ** years)
+    fv_shortfall_sip = calculate_sip_future_value(current_sip, expected_return, years)
+    achievable_corpus = fv_existing + fv_shortfall_sip
+    new_probability = run_monte_carlo_simulation(
+        initial_corpus=existing_corpus,
+        monthly_sip=current_sip,
+        years=years,
+        target_corpus=achievable_corpus,
+        expected_annual_return=expected_return,
+        annual_volatility=annual_volatility,
+    )["success_probability"]
+
+    option_3 = (
+        f"Reduce retirement corpus target to ₹{achievable_corpus:,.0f} "
+        f"(achievable at ₹{current_sip:,.0f} SIP = {new_probability:.0f}% confidence)."
+    )
+
+    return {
+        "gap_analysis": (
+            f"Your current SIP capacity (₹{current_sip:,.0f}) covers "
+            f"{pct:.0%} of the required SIP (₹{required_sip:,.0f}). "
+            f"Gap: ₹{gap_sip:,.0f}/month."
+        ),
+        "option_1": option_1,
+        "option_2": option_2,
+        "option_3": option_3,
+        "recommended": "option_2",
+        "extra_years": extra_years,
+        "adjusted_sip": round(adjusted_sip, 2),
+        "achievable_corpus": round(achievable_corpus, 2),
+        "new_probability": round(new_probability, 2),
+    }
+
+
+def build_sensitivity_analysis(
+    current_sip: float,
+    required_sip: float,
+    initial_corpus: float,
+    target_corpus: float,
+    years: int,
+    expected_return: float,
+    annual_volatility: float = 0.15,
+    points: int = 10,
+) -> Dict[str, List[float]]:
+    max_sip = max(current_sip, 2.0 * required_sip)
+    sips = np.linspace(current_sip, max_sip, points)
+    probabilities = [
+        run_monte_carlo_simulation(
+            initial_corpus=initial_corpus,
+            monthly_sip=float(sip),
+            years=years,
+            target_corpus=target_corpus,
+            expected_annual_return=expected_return,
+            annual_volatility=annual_volatility,
+        )["success_probability"]
+        for sip in sips
+    ]
+    current_probability = run_monte_carlo_simulation(
+        initial_corpus=initial_corpus,
+        monthly_sip=current_sip,
+        years=years,
+        target_corpus=target_corpus,
+        expected_annual_return=expected_return,
+        annual_volatility=annual_volatility,
+    )["success_probability"]
+
+    return {
+        "sips": [float(round(sip, 2)) for sip in sips],
+        "probabilities": [float(round(prob, 2)) for prob in probabilities],
+        "current_probability": float(round(current_probability, 2)),
     }
 
 

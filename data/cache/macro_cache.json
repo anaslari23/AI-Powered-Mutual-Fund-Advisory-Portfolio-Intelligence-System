@@ -6,7 +6,27 @@
     "inflation_trend": "stable",
     "rate_trend": "stable",
     "source": "partial",
-    "fetched_at": "2026-03-26T17:28:09"
+    "fetched_at": "2026-03-26T18:28:32",
+    "data_points": {
+      "cpi_yoy_pct": {
+        "value": 6.0,
+        "source": "fallback",
+        "fetched_at": "2026-03-26T18:28:32",
+        "is_fallback": true
+      },
+      "repo_rate_pct": {
+        "value": 6.5,
+        "source": "fallback",
+        "fetched_at": "2026-03-26T18:28:32",
+        "is_fallback": true
+      },
+      "bond_yield_pct": {
+        "value": 24.64,
+        "source": "FRED/yfinance",
+        "fetched_at": "2026-03-26T18:28:32",
+        "is_fallback": false
+      }
+    }
   },
-  "cached_at": "2026-03-26T17:28:09"
+  "cached_at": "2026-03-26T18:29:15"
 }
