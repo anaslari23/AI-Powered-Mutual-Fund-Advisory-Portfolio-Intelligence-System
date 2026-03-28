@@ -166,5 +166,4 @@ Adjusts model portfolio weights based on live macroeconomic signals (Inflation, 
 
 ---
 
-## Disclaimer
-This system is for educational and research purposes. Investment in mutual funds is subject to market risks. Users should consult a qualified financial advisor before making any investment decisions.
+
