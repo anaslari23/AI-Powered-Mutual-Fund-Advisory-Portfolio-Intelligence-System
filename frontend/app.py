@@ -146,7 +146,10 @@ def _clear_selected_client() -> None:
 
 def _build_client_profile(client_record: dict) -> dict:
     profile = dict(client_record.get("profile_data") or {})
-    for field in ("name", "age", "contact", "pan_placeholder", "city", "source_channel"):
+    for field in (
+        "name", "age", "contact", "pan_placeholder", "city", "source_channel",
+        "occupation", "income_bracket", "investable_surplus",
+    ):
         value = client_record.get(field)
         if value is not None and field not in profile:
             profile[field] = value
@@ -219,8 +222,13 @@ def _render_login_screen() -> None:
 
 
 def _render_new_client_form(token: str) -> None:
+    from frontend.components.demo_data import render_demo_profile_selector
+    
+    render_demo_profile_selector(token)
+    st.markdown("---")
+    
     with st.form("new_client_form", clear_on_submit=True):
-        st.markdown("### New Client")
+        st.markdown("### Or Create Manually")
         col1, col2 = st.columns(2)
         with col1:
             name = st.text_input("Name")
@@ -258,7 +266,7 @@ def _render_new_client_form(token: str) -> None:
     st.session_state["show_new_client_form"] = False
     st.session_state["selected_client_id"] = created["id"]
     st.session_state["loaded_client_id"] = None
-    st.success("Client created.")
+    st.session_state["_flash_success"] = f"Client '{created.get('name', '')}' created successfully."
     st.rerun()
 
 
@@ -476,10 +484,16 @@ else:
     if not st.session_state.get("selected_client_id"):
         dash_tab, settings_tab = st.tabs(["Dashboard", "Advisor Settings"])
         with dash_tab:
+            if st.session_state.get("show_new_client_form"):
+                _render_new_client_form(advisor_token)
+                st.markdown("---")
             render_global_dashboard(advisor_token)
         with settings_tab:
             _render_advisor_settings(advisor_token)
     else:
+        if st.session_state.get("_flash_success"):
+            st.success(st.session_state.pop("_flash_success"))
+
         selected_client_id = int(st.session_state["selected_client_id"])
         client_record, client_profile = _load_selected_client(advisor_token, selected_client_id)
         if not client_record or not client_profile:
@@ -506,14 +520,16 @@ else:
             meeting_tab,
             snapshot_tab,
             proposal_tab,
-            review_tab,
+            final_review_tab,
+            periodic_review_tab,
             audit_tab,
         ) = st.tabs([
             "Analysis Workspace",
             "Meeting Notes",
             "Portfolio Snapshot",
             "Proposal Builder",
-            "Review Report",
+            "Final Review (Mandatory)",
+            "Periodic Review",
             "Audit Trail",
         ])
 
@@ -565,7 +581,11 @@ else:
         with proposal_tab:
             render_proposal_builder(advisor_token, selected_client_id, client_record)
 
-        with review_tab:
+        with final_review_tab:
+            from frontend.components.final_review import render_final_review
+            render_final_review(advisor_token, selected_client_id, client_record)
+
+        with periodic_review_tab:
             render_review_report(advisor_token, selected_client_id, client_record)
 
         with audit_tab:

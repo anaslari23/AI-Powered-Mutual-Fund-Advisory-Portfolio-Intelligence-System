@@ -68,8 +68,10 @@ from backend.processors.output_formatter import (
 from ai_layer import get_live_intelligence
 from ai_layer.scheduler.updater import start_scheduler
 
-# Start the background 15-minute data refresh once per app lifecycle
-if "_ai_scheduler_started" not in st.session_state:
+def _ensure_scheduler_started() -> None:
+    """Start the background data refresh once per app lifecycle (safe to call from inside a Streamlit run context)."""
+    if st.session_state.get("_ai_scheduler_started") is not None:
+        return
     try:
         start_scheduler()
         st.session_state["_ai_scheduler_started"] = True
@@ -488,6 +490,7 @@ def _log_report_issued(report_type: str, version: str) -> None:
 
 
 def render_dashboard(client_data: dict):
+    _ensure_scheduler_started()
     # ── NEW: Macro Context Engine ─────────────────────────────────────────────
     macro_context = get_macro_context()
 

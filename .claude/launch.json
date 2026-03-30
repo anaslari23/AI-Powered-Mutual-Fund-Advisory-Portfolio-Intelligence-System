@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Backend API (FastAPI)",
+      "runtimeExecutable": "/Volumes/ssd/dev/pyenv/versions/3.11.7/bin/python3",
+      "runtimeArgs": ["-m", "uvicorn", "backend.main:app", "--reload"],
+      "port": 8000
+    },
+    {
+      "name": "Frontend (Streamlit)",
+      "runtimeExecutable": "/Volumes/ssd/dev/pyenv/versions/3.11.7/bin/python3",
+      "runtimeArgs": ["-m", "streamlit", "run", "frontend/app.py"],
+      "port": 8501
+    },
+    {
+      "name": "Celery Worker",
+      "runtimeExecutable": "/Volumes/ssd/dev/pyenv/versions/3.11.7/bin/python3",
+      "runtimeArgs": ["-m", "celery", "-A", "ai_agents.tasks", "worker", "--loglevel=info"],
+      "port": null
+    }
+  ]
+}
