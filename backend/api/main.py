@@ -32,6 +32,11 @@ from backend.engines.goal_engine import calculate_child_education_goal, calculat
 from backend.engines.monte_carlo_engine import run_monte_carlo_simulation
 from backend.engines.risk_engine import calculate_risk_score
 from backend.models.client_model import ClientModel
+from backend.services.payload_builder import (
+    build_advisory_payload,
+    generate_advisory_response,
+    validate_payload,
+)
 
 
 init_db()
@@ -462,6 +467,43 @@ def get_client(
             else None,
         },
     }
+
+
+@app.post("/clients/{client_id}/advisory")
+def generate_advisory(
+    client_id: int,
+    db: Session = Depends(get_db),
+    current_advisor: Advisor = Depends(get_current_advisor),
+):
+    _get_accessible_client_or_404(db, current_advisor, client_id)
+
+    try:
+        payload = build_advisory_payload(client_id, db)
+        missing_fields = validate_payload(payload)
+        if missing_fields:
+            return {
+                "status": "incomplete_data",
+                "missing_fields": missing_fields,
+                "message": "Please complete all required client inputs before generating proposal",
+            }
+
+        print("Advisory Payload:", payload)
+        response = generate_advisory_response(payload)
+        if response.get("error") == "Missing required input":
+            return {
+                "status": "error",
+                "message": "Advisory generation failed due to incomplete system data",
+            }
+
+        return {
+            "status": "ok",
+            "payload": payload,
+            "advisory": response,
+        }
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to generate advisory: {exc}")
 
 
 @app.put("/clients/{client_id}")

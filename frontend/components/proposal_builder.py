@@ -11,6 +11,7 @@ from frontend.api_client import (
     APIClientError,
     approve_proposal,
     create_proposal_draft,
+    generate_advisory,
     issue_proposal_report,
     list_issued_reports,
     list_proposals,
@@ -141,13 +142,46 @@ def _render_edit_tab(token: str, client_id: int, client_record: Dict[str, Any]) 
             for _, row in edited_bench.iterrows()
         ]
 
+        try:
+            advisory_response = generate_advisory(token, client_id)
+        except APIClientError as exc:
+            st.error(f"Failed to assemble advisory payload: {exc}")
+            st.stop()
+
+        if advisory_response.get("status") == "incomplete_data":
+            st.error("Missing required inputs:")
+            for field in advisory_response.get("missing_fields", []):
+                st.write(f"- {field}")
+            st.stop()
+
+        if advisory_response.get("status") == "error":
+            st.error(advisory_response.get("message", "Advisory generation failed."))
+            st.stop()
+
+        advisory_payload = advisory_response.get("payload") or {}
+        advisory_output = advisory_response.get("advisory") or {}
+        client_payload = advisory_payload.get("client_profile") or {}
+        risk_payload = advisory_payload.get("risk_output") or {}
+        allocation_payload = (advisory_payload.get("allocation_output") or {}).get("allocation") or {}
+        suggested_category = (
+            category_name.strip()
+            or ((advisory_output.get("fund_rationale") or [{}])[0].get("category") if advisory_output.get("fund_rationale") else None)
+            or "Mutual Fund"
+        )
+        rationale_body = rationale_text.strip() or advisory_output.get("why_this") or ""
+
         system_draft = {
             "client_snapshot": {
-                "name": client_record.get("name"),
-                "age": client_record.get("age"),
-                "risk_class": client_record.get("risk_class"),
+                "name": client_payload.get("name", client_record.get("name")),
+                "age": client_payload.get("age", client_record.get("age")),
+                "risk_class": risk_payload.get("class") or risk_payload.get("risk_class") or client_record.get("risk_class"),
             },
-            "fund_category": category_name,
+            "fund_category": suggested_category,
+            "allocation": allocation_payload,
+            "guidance_output": advisory_payload.get("guidance_output") or {},
+            "portfolio_analysis": advisory_payload.get("portfolio_analysis") or {},
+            "advisory_payload": advisory_payload,
+            "advisory_output": advisory_output,
         }
 
         try:
@@ -156,7 +190,7 @@ def _render_edit_tab(token: str, client_id: int, client_record: Dict[str, Any]) 
                 client_id,
                 {
                     "system_draft": system_draft,
-                    "category_rationale": rationale_text,
+                    "category_rationale": rationale_body,
                     "sip_assumptions": {"rows": sip_rows},
                     "benchmark_data": bench_rows,
                     "override_reason": override_reason.strip() or None,

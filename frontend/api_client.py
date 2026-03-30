@@ -116,6 +116,10 @@ def save_client_analysis_record(
     )
 
 
+def generate_advisory(token: str, client_id: int) -> dict[str, Any]:
+    return _request("POST", f"/clients/{client_id}/advisory", token=token) or {}
+
+
 def get_client_audit_trail(token: str, client_id: int) -> list[dict[str, Any]]:
     return _request("GET", f"/clients/{client_id}/audit-trail", token=token)
 
