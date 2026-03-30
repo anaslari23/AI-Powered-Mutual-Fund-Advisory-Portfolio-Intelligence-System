@@ -28,10 +28,16 @@ def render_global_dashboard(token: str) -> None:
         st.markdown(f"### Welcome, {advisor_name}")
         st.caption(f"Role: `{advisor_role}` | Your advisory workspace")
     with logout_col:
-        if st.button("Logout", key="global_dash_logout", use_container_width=True):
-            for key in list(st.session_state.keys()):
-                del st.session_state[key]
-            st.rerun()
+        col_new, col_out = st.columns(2)
+        with col_new:
+            if st.button("New Client", key="global_dash_new_client", use_container_width=True, type="primary"):
+                st.session_state["show_new_client_form"] = not st.session_state.get("show_new_client_form", False)
+                st.rerun()
+        with col_out:
+            if st.button("Logout", key="global_dash_logout", use_container_width=True):
+                for key in list(st.session_state.keys()):
+                    del st.session_state[key]
+                st.rerun()
 
     # Load data
     try:
