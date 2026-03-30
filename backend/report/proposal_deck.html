@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Advisor Proposal Deck</title>
+    <style>
+        @page {
+            margin: 16mm 14mm;
+        }
+
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+            color: #102033;
+            margin: 0;
+            font-size: 13px;
+            line-height: 1.45;
+            background: #ffffff;
+        }
+
+        .slide {
+            min-height: 250mm;
+            page-break-after: always;
+            position: relative;
+            padding: 4mm 0 8mm 0;
+        }
+
+        .slide:last-child {
+            page-break-after: auto;
+        }
+
+        .eyebrow {
+            color: #2563eb;
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            font-size: 10px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        h1 {
+            font-size: 30px;
+            margin: 0 0 10px 0;
+            color: #0f172a;
+        }
+
+        h2 {
+            font-size: 24px;
+            margin: 0 0 10px 0;
+            color: #0f172a;
+        }
+
+        h3 {
+            font-size: 15px;
+            margin: 0 0 8px 0;
+            color: #1d4ed8;
+        }
+
+        p {
+            margin: 0 0 10px 0;
+        }
+
+        .hero {
+            background: linear-gradient(135deg, #0f172a 0%, #1d4ed8 100%);
+            color: #f8fafc;
+            padding: 24px 20px;
+            border-radius: 18px;
+            margin-bottom: 16px;
+        }
+
+        .hero p {
+            color: #dbeafe;
+            font-size: 14px;
+        }
+
+        .grid-two {
+            display: table;
+            width: 100%;
+            table-layout: fixed;
+            border-spacing: 12px 0;
+        }
+
+        .grid-col {
+            display: table-cell;
+            vertical-align: top;
+        }
+
+        .card {
+            border: 1px solid #dbe5f1;
+            border-radius: 12px;
+            padding: 14px 16px;
+            background: #f8fbff;
+            margin-bottom: 12px;
+        }
+
+        .card-red {
+            border: 1px solid #fecaca;
+            background: #fef2f2;
+        }
+        
+        .card-green {
+            border: 1px solid #bbf7d0;
+            background: #f0fdf4;
+        }
+
+        .card-orange {
+            border: 1px solid #fed7aa;
+            background: #fff7ed;
+        }
+
+        .metric {
+            font-size: 28px;
+            font-weight: bold;
+            color: #0f172a;
+            margin-bottom: 4px;
+        }
+
+        .metric-label {
+            font-size: 11px;
+            color: #5b6b80;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .narrative {
+            font-size: 15px;
+            line-height: 1.6;
+            color: #1e293b;
+            margin-top: 10px;
+            white-space: pre-wrap;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 14px;
+            margin-bottom: 10px;
+        }
+
+        .table th,
+        .table td {
+            border: 1px solid #dbe5f1;
+            padding: 10px 12px;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        .table th {
+            background: #eaf2ff;
+            color: #0f172a;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        .source {
+            font-size: 10px;
+            color: #64748b;
+            font-style: italic;
+            margin-top: 8px;
+        }
+
+        /* A4 Footer Metadata */
+        .page-header {
+            position: absolute;
+            top: -10mm;
+            left: 0;
+            right: 0;
+            font-size: 9px;
+            color: #94a3b8;
+            text-align: right;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 2mm;
+        }
+        
+        .page-footer {
+            position: absolute;
+            bottom: -5mm;
+            left: 0;
+            right: 0;
+            font-size: 9px;
+            color: #94a3b8;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 2mm;
+            display: table;
+            width: 100%;
+        }
+
+        .footer-left { display: table-cell; text-align: left; }
+        .footer-right { display: table-cell; text-align: right; }
+
+    </style>
+</head>
+<body>
+
+    <!-- Section 1: Cover -->
+    <section class="slide">
+        <div class="page-footer">
+            <div class="footer-left">v{{ deck.version_number }} | {{ deck.issue_date }}</div>
+            <div class="footer-right">Strictly Confidential</div>
+        </div>
+        
+        <div class="hero" style="margin-top: 50mm; text-align: center; padding: 60px 20px;">
+            <div class="eyebrow" style="color: #60a5fa;">Investment Proposal</div>
+            <h1 style="color: white; font-size: 38px;">Strategic Wealth Plan</h1>
+            <p style="font-size: 18px; margin-bottom: 30px;">Prepared for {{ deck.cover.client_name }}</p>
+            <div style="margin-top: 50px; font-size: 14px; color: #cbd5e1;">
+                Risk Profile: <strong>{{ deck.cover.risk_class }}</strong><br>
+                Advisor: <strong>{{ deck.cover.advisor_name }}</strong><br>
+                Date: {{ deck.issue_date }}
+            </div>
+        </div>
+    </section>
+
+    <!-- Sections 2-4: Summary, Allocation, Portfolio -->
+    <section class="slide">
+        <div class="page-header">Proposal v{{ deck.version_number }} | Strategic Overview</div>
+        <div class="page-footer">
+            <div class="footer-left">{{ deck.cover.client_name }}</div>
+            <div class="footer-right">{{ deck.issue_date }}</div>
+        </div>
+
+        <div class="eyebrow">Client Snapshot</div>
+        <h2>Executive Summary</h2>
+        <div class="card">
+            <p class="narrative">{{ deck.advisory_narrative.client_summary }}</p>
+        </div>
+
+        <div class="eyebrow" style="margin-top: 20px;">Allocation Strategy</div>
+        <h2>Risk & Asset Allocation</h2>
+        <div class="grid-two">
+            <div class="grid-col">
+                <div class="card">
+                    <h3>Risk Alignment</h3>
+                    <p class="narrative">{{ deck.advisory_narrative.risk_explanation }}</p>
+                </div>
+            </div>
+            <div class="grid-col">
+                <div class="card">
+                    <h3>Recommended Allocation</h3>
+                    <p class="narrative">{{ deck.advisory_narrative.allocation_explanation }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="eyebrow" style="margin-top: 10px;">Portfolio Context</div>
+        <div class="card">
+            <h3>Current Portfolio Bias</h3>
+            <p class="narrative">{{ deck.advisory_narrative.portfolio_commentary }}</p>
+        </div>
+    </section>
+
+    <!-- Sections 5-6: WHY & WHY NOT -->
+    <section class="slide">
+        <div class="page-header">Proposal v{{ deck.version_number }} | Product Rationale</div>
+        <div class="page-footer">
+            <div class="footer-left">{{ deck.cover.client_name }}</div>
+            <div class="footer-right">{{ deck.issue_date }}</div>
+        </div>
+
+        <div class="eyebrow">Category Thesis</div>
+        <h2>Why {{ deck.category_rationale.category_name }}?</h2>
+        <div class="card">
+            <h3>Advisor Rationale</h3>
+            <p class="narrative">{{ deck.category_rationale.rationale_text }}</p>
+        </div>
+        
+        <div class="card">
+            <h3>Category Explanation</h3>
+            <p class="narrative">{{ deck.category_explanation }}</p>
+        </div>
+
+        <div class="eyebrow" style="margin-top: 20px;">Category Filtering</div>
+        <h2>Why Not Other Categories?</h2>
+        <div class="card card-red">
+            <p class="narrative" style="margin-top: 0;">{{ deck.advisory_narrative.negative_justification }}</p>
+        </div>
+    </section>
+
+    <!-- Sections 7-9: SIP, Affordability, Assumptions -->
+    <section class="slide">
+        <div class="page-header">Proposal v{{ deck.version_number }} | Financial Projections</div>
+        <div class="page-footer">
+            <div class="footer-left">{{ deck.cover.client_name }}</div>
+            <div class="footer-right">{{ deck.issue_date }}</div>
+        </div>
+
+        <div class="eyebrow">Investment Projection</div>
+        <h2>SIP Illustration</h2>
+        <table class="table">
+            <tr>
+                <th>Monthly SIP (₹)</th>
+                <th>Horizon (Yrs)</th>
+                <th>Assumed Return</th>
+                <th>Projected Corpus</th>
+            </tr>
+            {% for row in deck.sip_matrix.get('rows', []) %}
+            <tr>
+                <td>₹{{ "{:,.0f}".format(row.monthly_sip) }}</td>
+                <td>{{ row.horizon_years }}</td>
+                <td>{{ row.assumed_return_pct }}%</td>
+                <td><strong>₹{{ "{:,.0f}".format(row.projected_corpus) }}</strong></td>
+            </tr>
+            {% endfor %}
+        </table>
+        
+        <!-- A3: Affordability Indicator -->
+        <div class="eyebrow" style="margin-top: 30px;">Feasibility Check</div>
+        <h2>Affordability Assessment</h2>
+        {% if deck.affordability_indicator.lower() == "feasible" %}
+        <div class="card card-green">
+            <h3>✅ Status: {{ deck.affordability_indicator }}</h3>
+            <p>The proposed SIP amount is comfortably within your monthly surplus, allowing room for emergency liquid savings.</p>
+        </div>
+        {% elif deck.affordability_indicator.lower() == "stretch" %}
+        <div class="card card-orange">
+            <h3>⚠️ Status: {{ deck.affordability_indicator }}</h3>
+            <p>The proposed SIP amount consumes a large portion of your monthly surplus. Ensure you have an adequate emergency fund.</p>
+        </div>
+        {% else %}
+        <div class="card card-red">
+            <h3>⛔ Status: {{ deck.affordability_indicator }}</h3>
+            <p>This SIP amount is not advisable given the current surplus. Consider reducing the commitment to maintain liquidity.</p>
+        </div>
+        {% endif %}
+
+        <!-- A1: Assumptions Block -->
+        <div class="eyebrow" style="margin-top: 30px;">Projection Logic</div>
+        <h2>Assumptions Used</h2>
+        <div class="card" style="background: #f1f5f9; border-color: #cbd5e1;">
+            <p class="narrative" style="margin-top: 0; font-family: monospace; font-size: 13px;">{{ deck.assumptions.display_text }}</p>
+        </div>
+    </section>
+
+    <!-- Sections 10-12: Benchmark, Disclaimer, Conclusion -->
+    <section class="slide">
+        <div class="page-header">Proposal v{{ deck.version_number }} | Closing Details</div>
+        <div class="page-footer">
+            <div class="footer-left">{{ deck.cover.client_name }}</div>
+            <div class="footer-right">{{ deck.issue_date }}</div>
+        </div>
+
+        <div class="eyebrow">Fund Comparison</div>
+        <h2>Benchmark Alignment</h2>
+        <table class="table">
+            <tr>
+                <th>Period</th>
+                <th>Scheme Target</th>
+                <th>Benchmark Target</th>
+                <th>Category Average</th>
+            </tr>
+            {% for row in deck.benchmark_data %}
+            <tr>
+                <td>{{ row.period }}</td>
+                <td>{{ row.scheme_pct }}%</td>
+                <td>{{ row.benchmark_pct }}%</td>
+                <td>{{ row.category_avg_pct }}%</td>
+            </tr>
+            {% endfor %}
+        </table>
+        
+        <div class="eyebrow" style="margin-top: 30px;">Summary</div>
+        <h2>Final Recommendation</h2>
+        <div class="card">
+            <p class="narrative" style="font-weight: bold; margin-top: 0;">{{ deck.advisory_narrative.final_recommendation }}</p>
+        </div>
+
+        <div class="eyebrow" style="margin-top: 30px;">Important Note</div>
+        <h2>Disclaimer & Advisor Info</h2>
+        <div class="card" style="font-size: 11px; color: #64748b;">
+            <p>{{ disclaimer }}</p>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 10px 0;">
+            <p style="margin-bottom: 0;">
+                <strong>{{ deck.advisor_contact.name }}</strong> | {{ deck.advisor_contact.firm_name }}<br>
+                E: {{ deck.advisor_contact.email }} | T: {{ deck.advisor_contact.phone }}
+            </p>
+        </div>
+    </section>
+
+</body>
+</html>
