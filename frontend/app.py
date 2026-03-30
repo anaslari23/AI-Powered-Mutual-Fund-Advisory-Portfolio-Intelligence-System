@@ -366,7 +366,7 @@ def _render_advisor_settings(token: str) -> None:
                                       placeholder="e.g. /app/assets/logo.png")
 
         st.caption(f"Email: `{profile.get('email')}` (cannot be changed) | Role: `{profile.get('role')}`")
-        save = st.form_submit_button("Save Settings", use_container_width=True)
+        save = st.form_submit_button("Save Settings", width="stretch")
 
     if save:
         try:

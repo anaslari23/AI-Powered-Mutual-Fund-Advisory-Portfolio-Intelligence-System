@@ -30,11 +30,11 @@ def render_global_dashboard(token: str) -> None:
     with logout_col:
         col_new, col_out = st.columns(2)
         with col_new:
-            if st.button("New Client", key="global_dash_new_client", use_container_width=True, type="primary"):
+            if st.button("New Client", key="global_dash_new_client", width="stretch", type="primary"):
                 st.session_state["show_new_client_form"] = not st.session_state.get("show_new_client_form", False)
                 st.rerun()
         with col_out:
-            if st.button("Logout", key="global_dash_logout", use_container_width=True):
+            if st.button("Logout", key="global_dash_logout", width="stretch"):
                 for key in list(st.session_state.keys()):
                     del st.session_state[key]
                 st.rerun()
@@ -91,7 +91,7 @@ def render_global_dashboard(token: str) -> None:
                 }
                 for c in pending
             ])
-            st.dataframe(pending_df, use_container_width=True, hide_index=True)
+            st.dataframe(pending_df, width="stretch", hide_index=True)
 
     with right_col:
         st.markdown("**Recent Activity**")
@@ -129,7 +129,7 @@ def render_global_dashboard(token: str) -> None:
                 p_count = proposal_counts.get(str(client.get("id")), 0)
                 st.metric("Proposals", p_count)
             with col5:
-                if st.button("Open", key=f"gdash_open_{client['id']}", use_container_width=True):
+                if st.button("Open", key=f"gdash_open_{client['id']}", width="stretch"):
                     st.session_state["selected_client_id"] = client["id"]
                     st.session_state["loaded_client_id"] = None
                     st.rerun()

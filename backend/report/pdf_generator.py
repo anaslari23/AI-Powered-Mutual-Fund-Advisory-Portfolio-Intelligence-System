@@ -10,6 +10,15 @@ from backend.report.charts import (
 )
 from backend.engines.explanation_standards import _STANDARDS
 
+MANDATORY = [
+    "baseline",
+    "transition",
+    "why_not",
+    "category_explanation",
+    "final_recommendation",
+    "system_recommendation",
+]
+
 def generate_financial_report(
     client_data: dict,
     risk_data: dict,
@@ -246,10 +255,55 @@ def generate_proposal_deck_pdf(
     except FileNotFoundError:
         disclaimer_text = "Market performance is not guaranteed. Please consult a qualified advisor."
 
+    advisory_output = deck_data.get("advisory_output") or {}
+    advisory_payload = deck_data.get("advisory_payload") or {}
+    why_not = deck_data.get("why_not") or advisory_output.get("why_not") or []
+    normalized_why_not = []
+    for item in why_not:
+        if isinstance(item, dict):
+            normalized_why_not.append(
+                {
+                    "option": item.get("option", item.get("rejected_option", "Alternative option")),
+                    "reason": item.get("reason", ""),
+                }
+            )
+
+    system_recommendation = (
+        deck_data.get("system_recommendation")
+        or advisory_payload.get("system_recommendation")
+        or deck_data.get("allocation")
+        or {}
+    )
+    advisor_override = (
+        deck_data.get("advisor_override")
+        or advisory_payload.get("advisor_override")
+        or {"override_reason": "No override applied"}
+    )
+    final_recommendation = (
+        deck_data.get("final_recommendation")
+        or advisory_output.get("final_recommendation")
+        or deck_data.get("advisory_narrative", {}).get("final_recommendation", "")
+    )
+
+    data = {
+        "today": datetime.now().strftime("%d %b %Y"),
+        "deck": deck_data,
+        "disclaimer": disclaimer_text,
+        "baseline": deck_data.get("baseline") or advisory_output.get("baseline") or "",
+        "transition": deck_data.get("transition") or advisory_output.get("transition") or "",
+        "category_explanation": deck_data.get("category_explanation") or advisory_output.get("category_explanation") or "",
+        "why_not": normalized_why_not,
+        "system_recommendation": system_recommendation,
+        "advisor_override": advisor_override,
+        "final_recommendation": final_recommendation,
+    }
+
+    for key in MANDATORY:
+        if key not in data:
+            raise Exception(f"{key} missing — FINAL PoC FAILED")
+
     html_out = template.render(
-        today=datetime.now().strftime("%d %b %Y"),
-        deck=deck_data,
-        disclaimer=disclaimer_text,
+        **data,
     )
 
     HTML(string=html_out).write_pdf(output_path)

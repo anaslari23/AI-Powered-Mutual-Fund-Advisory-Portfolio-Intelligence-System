@@ -88,7 +88,7 @@ def _render_edit_tab(token: str, client_id: int, client_record: Dict[str, Any]) 
         sip_df,
         num_rows="dynamic",
         key=f"pb_sip_editor_{client_id}",
-        use_container_width=True,
+        width="stretch",
         column_config={
             "Monthly SIP (₹)": st.column_config.NumberColumn("Monthly SIP (₹)", min_value=100, step=500),
             "Horizon (Yrs)": st.column_config.NumberColumn("Horizon (Yrs)", min_value=1, max_value=40, step=1),
@@ -106,7 +106,7 @@ def _render_edit_tab(token: str, client_id: int, client_record: Dict[str, Any]) 
         bench_df,
         num_rows="dynamic",
         key=f"pb_bench_editor_{client_id}",
-        use_container_width=True,
+        width="stretch",
     )
 
     st.markdown("---")
@@ -117,7 +117,7 @@ def _render_edit_tab(token: str, client_id: int, client_record: Dict[str, Any]) 
         key=f"pb_override_{client_id}",
     )
 
-    if st.button("Save Proposal Draft", key=f"pb_save_{client_id}", use_container_width=True):
+    if st.button("Save Proposal Draft", key=f"pb_save_{client_id}", width="stretch"):
         # Compute corpus values
         sip_rows = []
         for _, row in edited_sip.iterrows():
@@ -257,6 +257,13 @@ def _render_preview_tab(token: str, client_id: int) -> None:
             st.markdown(f"#### WHY – {cat_name.upper()}")
             st.markdown(proposal["category_rationale"])
 
+    with st.container(border=True):
+        st.subheader("Final Advisory Summary")
+        st.write(proposal.get("baseline"))
+        st.write(proposal.get("transition"))
+        st.write(proposal.get("category_explanation"))
+        st.write(proposal.get("final_recommendation"))
+
     sip_data = (proposal.get("sip_assumptions") or {}).get("rows", [])
     if sip_data:
         with st.container(border=True):
@@ -270,7 +277,7 @@ def _render_preview_tab(token: str, client_id: int) -> None:
                 }
                 for r in sip_data
             ]
-            st.dataframe(pd.DataFrame(sip_display), use_container_width=True, hide_index=True)
+            st.dataframe(pd.DataFrame(sip_display), width="stretch", hide_index=True)
             st.caption("Past performance is not a guarantee of future returns. Projections are indicative only.")
 
     bench_data = proposal.get("benchmark_data") or []
@@ -286,7 +293,7 @@ def _render_preview_tab(token: str, client_id: int) -> None:
                 }
                 for r in bench_data
             ]
-            st.dataframe(pd.DataFrame(bench_display), use_container_width=True, hide_index=True)
+            st.dataframe(pd.DataFrame(bench_display), width="stretch", hide_index=True)
 
 
 def _render_issue_tab(token: str, client_id: int) -> None:
@@ -311,7 +318,7 @@ def _render_issue_tab(token: str, client_id: int) -> None:
         action_col1, action_col2 = st.columns(2)
         with action_col1:
             if status in ("draft", "reviewed", "overridden"):
-                if st.button("✅ Approve Proposal", key=f"approve_{client_id}_{proposal['id']}", use_container_width=True):
+                if st.button("✅ Approve Proposal", key=f"approve_{client_id}_{proposal['id']}", width="stretch"):
                     try:
                         approve_proposal(token, client_id, proposal["id"])
                         st.success("Proposal approved.")
@@ -327,7 +334,7 @@ def _render_issue_tab(token: str, client_id: int) -> None:
                     format_func=lambda x: "Standard Proposal Deck" if x == "proposal_deck" else "Vinsan Presentation Deck",
                     key=f"report_type_{client_id}",
                 )
-                if st.button("📄 Issue Report / Generate PDF", key=f"issue_{client_id}_{proposal['id']}", use_container_width=True):
+                if st.button("📄 Issue Report / Generate PDF", key=f"issue_{client_id}_{proposal['id']}", width="stretch"):
                     try:
                         with st.spinner("Generating PDF..."):
                             issued = issue_proposal_report(token, client_id, proposal["id"], {"report_type": report_type})
@@ -340,6 +347,7 @@ def _render_issue_tab(token: str, client_id: int) -> None:
                                         data=f.read(),
                                         file_name=issued["pdf_path"].split("/")[-1],
                                         mime="application/pdf",
+                                        width="content",
                                     )
                             except Exception:
                                 st.info("PDF generated on server. Check the reports/ directory.")
@@ -376,6 +384,7 @@ def _render_issue_tab(token: str, client_id: int) -> None:
                                 file_name=pdf_path.split("/")[-1],
                                 mime="application/pdf",
                                 key=f"dl_{report['id']}",
+                                width="content",
                             )
                     except Exception:
                         st.caption(f"`{pdf_path}`")

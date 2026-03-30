@@ -357,11 +357,47 @@
             </tr>
             {% endfor %}
         </table>
+
+        <div class="eyebrow" style="margin-top: 30px;">Baseline</div>
+        <h2>Standard Advisory Baseline</h2>
+        <div class="card">
+            <p class="narrative">{{ baseline }}</p>
+        </div>
+
+        <div class="eyebrow" style="margin-top: 30px;">Transition</div>
+        <h2>Plan Adjustment Logic</h2>
+        <div class="card">
+            <p class="narrative">{{ transition }}</p>
+        </div>
+
+        <div class="eyebrow" style="margin-top: 30px;">Category</div>
+        <h2>Category Explanation</h2>
+        <div class="card">
+            <p class="narrative">{{ category_explanation }}</p>
+        </div>
+
+        <div class="eyebrow" style="margin-top: 30px;">Why Not</div>
+        <h2>Why Not Other Options</h2>
+        <div class="card">
+            <ul>
+            {% for item in why_not %}
+            <li><b>{{ item.option }}</b>: {{ item.reason }}</li>
+            {% endfor %}
+            </ul>
+        </div>
+
+        <div class="eyebrow" style="margin-top: 30px;">Comparison</div>
+        <h2>System vs Advisor</h2>
+        <div class="card">
+            <p><b>System Allocation:</b> {{ system_recommendation }}</p>
+            <p><b>Advisor Allocation:</b> {{ advisor_override }}</p>
+            <p><b>Reason:</b> {{ advisor_override.override_reason }}</p>
+        </div>
         
         <div class="eyebrow" style="margin-top: 30px;">Summary</div>
         <h2>Final Recommendation</h2>
         <div class="card">
-            <p class="narrative" style="font-weight: bold; margin-top: 0;">{{ deck.advisory_narrative.final_recommendation }}</p>
+            <p class="narrative" style="font-weight: bold; margin-top: 0;">{{ final_recommendation }}</p>
         </div>
 
         <div class="eyebrow" style="margin-top: 30px;">Important Note</div>

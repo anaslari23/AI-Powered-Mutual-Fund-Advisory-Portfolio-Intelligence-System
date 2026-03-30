@@ -15,12 +15,7 @@ from backend.engines.rejection_engine import generate_rejection_logic
 from backend.engines.risk_engine import calculate_risk_score
 from backend.engines.sip_storyteller import generate_sip_story
 from backend.scoring.assumption_box import AssumptionBox
-
-try:
-    from backend.engines.recommendation_engine import suggest_mutual_funds
-except Exception:  # pragma: no cover - recommendation engine has optional runtime deps
-    suggest_mutual_funds = None
-
+from backend.engines.final_advisory_engine import generate_final_advisory
 
 REQUIRED_KEYS = [
     "client_profile",
@@ -128,7 +123,9 @@ def extract_client_profile(client: Client) -> Dict[str, Any]:
     }
 
 
-def _build_risk_output(client_profile: Dict[str, Any], latest_risk: Optional[RiskQuestionnaire]) -> Optional[Dict[str, Any]]:
+def _build_risk_output(
+    client_profile: Dict[str, Any], latest_risk: Optional[RiskQuestionnaire]
+) -> Optional[Dict[str, Any]]:
     if latest_risk is not None:
         return {
             "score": float(latest_risk.score),
@@ -349,13 +346,15 @@ def _build_fund_recommendations(
     allocation = allocation_output.get("allocation") or {}
     risk_class = str((risk_output or {}).get("class") or (risk_output or {}).get("risk_class") or "Moderate")
 
-    if suggest_mutual_funds is not None:
-        try:
+    try:
+        from backend.engines.recommendation_engine import suggest_mutual_funds
+
+        if suggest_mutual_funds is not None:
             recommendations, _ = suggest_mutual_funds(allocation, risk_class)
             if recommendations:
                 return recommendations
-        except Exception:
-            pass
+    except Exception:
+        pass
 
     fallback = _fallback_fund_recommendations(allocation_output, client_profile, goal_output)
     return fallback or None
@@ -387,10 +386,6 @@ def load_system_assumptions(
 
 
 def build_advisory_payload(client_id: int, db_session: Session) -> Dict[str, Any]:
-    """
-    Aggregates all required data for advisory generation.
-    MUST NOT contain hardcoded financial values.
-    """
     client = get_client_from_db(client_id, db_session)
     latest_risk = _latest_risk(db_session, client_id)
     goal_lines = _goal_lines(db_session, client_id)
@@ -412,12 +407,14 @@ def build_advisory_payload(client_id: int, db_session: Session) -> Dict[str, Any
     allocation_output = _build_allocation_output(risk_output, latest_draft)
     portfolio_analysis = _build_portfolio_analysis(client_profile, latest_portfolio, risk_output, goal_output)
     sip_output = _build_sip_output(goal_output, portfolio_analysis, risk_output)
+
     affordability = None
     if sip_output is not None:
         affordability = check_affordability(
             monthly_sip=_safe_float(sip_output.get("required_sip")),
             monthly_surplus=_safe_float(client_profile.get("monthly_surplus")),
         )
+
     fund_recommendations = _build_fund_recommendations(
         allocation_output,
         risk_output,
@@ -439,18 +436,28 @@ def build_advisory_payload(client_id: int, db_session: Session) -> Dict[str, Any
         "assumptions": assumptions,
     }
 
+    payload["system_recommendation"] = allocation_output
+    payload["advisor_override"] = {
+        "equity": (allocation_output or {}).get("equity", 0),
+        "debt": (allocation_output or {}).get("debt", 0),
+        "gold": (allocation_output or {}).get("gold", 0),
+        "override_reason": "No override applied",
+    }
+
     if latest_draft and (latest_draft.advisor_final or latest_draft.override_reason):
         payload["advisor_override"] = {
             "advisor_final": latest_draft.advisor_final or {},
             "reason": latest_draft.override_reason,
         }
 
+    advisory = generate_final_advisory(payload)
+    payload.update(advisory)
+
     return payload
 
 
 def validate_payload(payload: Dict[str, Any]) -> List[str]:
-    missing = [key for key in REQUIRED_KEYS if key not in payload or payload[key] is None]
-    return missing
+    return [key for key in REQUIRED_KEYS if key not in payload or payload[key] is None]
 
 
 def _normalise_status(status: str) -> str:
