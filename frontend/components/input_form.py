@@ -343,10 +343,17 @@ def render_input_form(initial_data: dict | None = None) -> dict | None:
                 max_value=100,
                 value=ret_age_default,
             )
+            _income_bracket_options = ["", "Below ₹3L", "₹3L–₹7L", "₹7L–₹15L", "₹15L–₹30L", "Above ₹30L"]
+            _stored_income_bracket = str(initial_data.get("income_bracket") or "")
+            _income_bracket_idx = (
+                _income_bracket_options.index(_stored_income_bracket)
+                if _stored_income_bracket in _income_bracket_options
+                else 0
+            )
             income_bracket = st.selectbox(
                 "Income Bracket",
-                ["", "Below ₹3L", "₹3L–₹7L", "₹7L–₹15L", "₹15L–₹30L", "Above ₹30L"],
-                index=0,
+                _income_bracket_options,
+                index=_income_bracket_idx,
                 help="Annual income bracket for risk profiling context.",
             )
 
