@@ -12,6 +12,11 @@ REQUIRED_OUTPUT_KEYS = [
     "confidence_score",
     "stress_test",
     "decision_trace",
+    # New mandatory fields (v2 contract)
+    "final_review",
+    "affordability",
+    "justification",
+    "advisory_report",
 ]
 
 _PRIORITY_LEVELS = {"CRITICAL", "HIGH", "MEDIUM"}
@@ -82,6 +87,11 @@ def enforce_types(output: Dict[str, Any]) -> Dict[str, Any]:
         trace = []
     normalized["decision_trace"] = [_ensure_trace_entry(entry) for entry in trace]
 
+    # New v2 fields — accept any dict, default to empty dict
+    for key in ("final_review", "affordability", "justification", "advisory_report"):
+        val = normalized.get(key)
+        normalized[key] = val if isinstance(val, dict) else {}
+
     return normalized
 
 
@@ -107,5 +117,13 @@ def validate_output_schema(output: Dict[str, Any]) -> Dict[str, Any]:
                 raise ValueError(f"Trace entry missing key: {key}")
         if str(entry["level"]).upper() not in _TRACE_LEVELS:
             raise ValueError(f"Invalid trace level: {entry['level']}")
+
+    # Validate final_review block when present and non-empty
+    final_review = output.get("final_review", {})
+    if isinstance(final_review, dict) and final_review:
+        if "status" not in final_review:
+            raise ValueError("final_review missing 'status' key")
+        if str(final_review["status"]) not in {"PASS", "WARN", "FAIL"}:
+            raise ValueError(f"Invalid final_review status: {final_review['status']}")
 
     return output
