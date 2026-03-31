@@ -957,7 +957,28 @@ def issue_proposal_report(
             generate_vinsan_proposal_pdf(deck_data, pdf_path)
         else:
             from backend.report.pdf_generator import generate_proposal_deck_pdf
-            generate_proposal_deck_pdf(draft.system_draft or {}, pdf_path)
+            snap = (draft.system_draft or {}).get("client_snapshot", {})
+            deck_data = {
+                "cover": {
+                    "client_name": client.name,
+                    "risk_class": snap.get("risk_class") or "Moderate",
+                    "version_number": draft.version_number,
+                },
+                "client_snapshot": snap,
+                "fund_category": (draft.system_draft or {}).get("fund_category", "Mutual Fund"),
+                "category_rationale": draft.category_rationale or "",
+                "sip_matrix": draft.sip_assumptions or {"rows": []},
+                "benchmark_data": draft.benchmark_data or [],
+                "advisor_contact": {
+                    "name": current_advisor.name,
+                    "email": current_advisor.email,
+                    "firm_name": current_advisor.firm_name or "",
+                    "phone": current_advisor.phone or "",
+                },
+                "version_number": draft.version_number,
+                "issue_date": datetime.utcnow().strftime("%d %b %Y"),
+            }
+            generate_proposal_deck_pdf(deck_data, pdf_path)
     except Exception as exc:
         pdf_path = None
     issued = IssuedReport(

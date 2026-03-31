@@ -24,6 +24,7 @@ from frontend.api_client import (
     create_client_record,
     get_client_record,
     get_current_advisor,
+    get_proposal_counts,
     list_clients,
     login_advisor,
     register_advisor,
@@ -33,94 +34,223 @@ from frontend.api_client import (
 from frontend.components.audit_trail import render_audit_trail_screen as render_audit_trail
 from frontend.components.client_portal import render_client_portal
 from frontend.components.dashboard import render_dashboard
-from frontend.components.global_dashboard import render_global_dashboard
 from frontend.components.input_form import render_input_form
 from frontend.components.meeting_notes import render_meeting_notes
 from frontend.components.portfolio_snapshot import render_portfolio_snapshot
 from frontend.components.proposal_builder import render_proposal_builder
 from frontend.components.review_report import render_review_report
 
-st.set_page_config(page_title="Institutional Financial Engine", layout="wide")
+st.set_page_config(
+    page_title="Vinsan Advisory",
+    layout="wide",
+    initial_sidebar_state="collapsed",
+)
 
-# Minimal Institutional Custom CSS
-st.markdown(
-    """
+st.markdown("""
 <style>
-    /* Premium Elegant Dark Theme */
-    .stApp {
-        background-color: #0B0F19 !important;
-        color: #E2E8F0 !important;
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    }
-    
-    /* Elegant Cards & Containers */
-    div[data-testid="stForm"], .stSelectbox > div > div, .stNumberInput > div > div {
-        background-color: #111827 !important;
-        border: 1px solid #1F2937 !important;
-        border-radius: 8px !important;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
-        transition: border-color 0.2s ease;
-    }
-    div[data-testid="stForm"]:hover, .stSelectbox > div > div:hover, .stNumberInput > div > div:hover {
-        border-color: #374151 !important;
-    }
-    
-    /* Sleek Typography */
-    h1, h2, h3, h4 {
-        color: #F8FAFC !important;
-        font-weight: 300 !important;
-        letter-spacing: -0.01em;
-        border-bottom: 1px solid #1E293B;
-        padding-bottom: 0.75rem;
-    }
-    p, label, span, div {
-        color: #94A3B8;
-    }
-    
-    /* High-End Metrics */
-    div[data-testid="stMetricValue"] {
-        font-size: 1.8rem;
-        color: #F8FAFC !important;
-        font-weight: 400;
-        letter-spacing: -0.02em;
-        font-family: 'Helvetica Neue', 'Inter', sans-serif;
-    }
-    div[data-testid="stMetricLabel"] {
-        font-size: 0.8rem;
-        color: #64748B !important;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        font-weight: 500;
-    }
-    
-    /* Premium Button (Muted Slate) */
-    div.stButton > button:first-child {
-        background: linear-gradient(180deg, #1E293B 0%, #0F172A 100%) !important;
-        color: #E2E8F0 !important;
-        border: 1px solid #334155 !important;
-        border-radius: 6px !important;
-        padding: 10px 20px;
-        font-weight: 500;
-        letter-spacing: 0.03em;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.2) !important;
-        transition: all 0.2s ease;
-    }
-    div.stButton > button:first-child:hover {
-        border-color: #475569 !important;
-        color: #FFFFFF !important;
-    }
+/* ── BASE ──────────────────────────────────────────────────── */
+.stApp {
+    background: #080E1A !important;
+    font-family: ‘Inter’, -apple-system, BlinkMacSystemFont, ‘Segoe UI’, sans-serif;
+}
+#MainMenu, footer, [data-testid="stToolbar"], [data-testid="stDecoration"] {
+    display: none !important;
+    visibility: hidden !important;
+}
+[data-testid="stHeader"] { background: #080E1A !important; border-bottom: 1px solid #16243A; }
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: #080E1A; }
+::-webkit-scrollbar-thumb { background: #1E3050; border-radius: 4px; }
+
+/* ── TYPOGRAPHY ─────────────────────────────────────────────── */
+h1 { font-size: 1.45rem !important; font-weight: 700 !important; color: #EFF6FF !important;
+     letter-spacing: -0.02em; border-bottom: none !important; padding-bottom: 0 !important; margin-bottom: 0.25rem !important; }
+h2 { font-size: 1.1rem !important; font-weight: 600 !important; color: #CBD5E1 !important;
+     letter-spacing: -0.01em; border-bottom: 1px solid #16243A !important; padding-bottom: 0.5rem !important; }
+h3 { font-size: 0.95rem !important; font-weight: 600 !important; color: #94A3B8 !important;
+     border-bottom: none !important; padding-bottom: 0 !important; }
+h4 { font-size: 0.78rem !important; font-weight: 600 !important; color: #64748B !important;
+     text-transform: uppercase; letter-spacing: 0.09em; border-bottom: none !important; }
+
+/* ── METRICS ────────────────────────────────────────────────── */
+[data-testid="stMetric"] {
+    background: #0E1829 !important;
+    border: 1px solid #16243A !important;
+    border-radius: 10px !important;
+    padding: 14px 18px !important;
+}
+[data-testid="stMetricValue"] {
+    font-size: 1.65rem !important; font-weight: 600 !important;
+    color: #EFF6FF !important; letter-spacing: -0.025em;
+}
+[data-testid="stMetricLabel"] {
+    font-size: 0.68rem !important; font-weight: 600 !important;
+    color: #334E6E !important; text-transform: uppercase; letter-spacing: 0.1em;
+}
+
+/* ── TABS ───────────────────────────────────────────────────── */
+.stTabs [data-baseweb="tab-list"] {
+    background: transparent !important;
+    border-bottom: 1px solid #16243A !important;
+    gap: 0 !important; padding: 0 !important;
+}
+.stTabs [data-baseweb="tab"] {
+    background: transparent !important; color: #3D5A78 !important;
+    font-size: 0.78rem !important; font-weight: 600 !important;
+    letter-spacing: 0.05em; text-transform: uppercase;
+    padding: 10px 18px !important; border: none !important;
+    border-bottom: 2px solid transparent !important; border-radius: 0 !important;
+    transition: color 0.15s ease;
+}
+.stTabs [data-baseweb="tab"]:hover { color: #7EA8D1 !important; }
+.stTabs [aria-selected="true"] {
+    color: #60A5FA !important; background: transparent !important;
+    border-bottom: 2px solid #3B82F6 !important;
+}
+.stTabs [data-baseweb="tab-panel"] { padding-top: 1.25rem !important; }
+
+/* ── BUTTONS ────────────────────────────────────────────────── */
+div.stButton > button {
+    background: #0E1829 !important; color: #94A3B8 !important;
+    border: 1px solid #1E3050 !important; border-radius: 7px !important;
+    font-size: 0.8rem !important; font-weight: 500 !important;
+    padding: 7px 15px !important; letter-spacing: 0.03em;
+    transition: all 0.15s ease !important;
+}
+div.stButton > button:hover {
+    background: #142035 !important; border-color: #2D64AF !important;
+    color: #BFDBFE !important;
+}
+div.stButton > button[kind="primary"] {
+    background: #1D4ED8 !important; color: #EFF6FF !important;
+    border: 1px solid #2563EB !important;
+}
+div.stButton > button[kind="primary"]:hover {
+    background: #1E40AF !important; border-color: #1D4ED8 !important;
+    color: #FFFFFF !important;
+}
+
+/* ── FORM INPUTS ────────────────────────────────────────────── */
+[data-testid="stTextInput"] input,
+[data-testid="stNumberInput"] input,
+[data-testid="stTextArea"] textarea {
+    background: #0A1220 !important; border: 1px solid #1A2E47 !important;
+    border-radius: 7px !important; color: #CBD5E1 !important;
+    font-size: 0.875rem !important; caret-color: #60A5FA;
+}
+[data-testid="stTextInput"] input:focus,
+[data-testid="stNumberInput"] input:focus,
+[data-testid="stTextArea"] textarea:focus {
+    border-color: #3B82F6 !important;
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.12) !important;
+}
+[data-testid="stTextInput"] input::placeholder,
+[data-testid="stNumberInput"] input::placeholder,
+[data-testid="stTextArea"] textarea::placeholder { color: #2D4A6A !important; }
+[data-testid="stSelectbox"] > div > div,
+[data-testid="stSelectbox"] > div { background: #0A1220 !important; border-color: #1A2E47 !important; }
+[data-testid="stWidgetLabel"] p, [data-testid="stWidgetLabel"] label {
+    color: #3D5A78 !important; font-size: 0.73rem !important;
+    font-weight: 600 !important; text-transform: uppercase; letter-spacing: 0.07em;
+}
+[data-testid="stFormSubmitButton"] > button {
+    background: #1D4ED8 !important; color: #EFF6FF !important;
+    border: 1px solid #2563EB !important; border-radius: 7px !important;
+    font-weight: 600 !important; width: 100% !important;
+}
+
+/* ── CONTAINERS ─────────────────────────────────────────────── */
+[data-testid="stContainer"][data-border="true"] {
+    background: #0E1829 !important;
+    border: 1px solid #16243A !important;
+    border-radius: 10px !important;
+    padding: 14px !important;
+}
+
+/* ── DATAFRAMES ─────────────────────────────────────────────── */
+[data-testid="stDataFrame"] { border: 1px solid #16243A !important; border-radius: 8px !important; }
+[data-testid="stDataFrame"] table { background: #0A1220 !important; }
+[data-testid="stDataFrame"] th { background: #0E1829 !important; color: #3D5A78 !important; }
+[data-testid="stDataFrame"] td { color: #94A3B8 !important; border-color: #16243A !important; }
+
+/* ── ALERTS ─────────────────────────────────────────────────── */
+[data-testid="stAlert"] { border-radius: 7px !important; border-left-width: 3px !important; }
+[data-testid="stNotification"] { background: #0A1220 !important; border-color: #16243A !important; }
+
+/* ── EXPANDER ───────────────────────────────────────────────── */
+[data-testid="stExpander"] {
+    background: #0E1829 !important; border: 1px solid #16243A !important; border-radius: 10px !important;
+}
+[data-testid="stExpander"] summary { color: #64748B !important; }
+
+/* ── CODE ───────────────────────────────────────────────────── */
+code {
+    background: #0A1220 !important; color: #60A5FA !important;
+    border-radius: 4px !important; padding: 2px 6px !important;
+    font-size: 0.78rem !important; border: 1px solid #1A2E47 !important;
+}
+
+/* ── CAPTION ────────────────────────────────────────────────── */
+[data-testid="stCaptionContainer"] p { color: #2D4A6A !important; font-size: 0.76rem !important; }
+
+/* ── DIVIDER ────────────────────────────────────────────────── */
+hr { border-color: #16243A !important; margin: 1.25rem 0 !important; }
+
+/* ── SIDEBAR ────────────────────────────────────────────────── */
+[data-testid="stSidebar"] { background: #080E1A !important; border-right: 1px solid #16243A !important; }
+
+/* ── RADIO / CHECKBOX ───────────────────────────────────────── */
+[data-testid="stRadio"] label p, [data-testid="stCheckbox"] label p { color: #64748B !important; font-size: 0.85rem !important; }
+
+/* ── INFO / SUCCESS / WARNING / ERROR ───────────────────────── */
+.stInfo { background: rgba(59,130,246,0.07) !important; border-left-color: #3B82F6 !important; }
+.stSuccess { background: rgba(16,185,129,0.07) !important; border-left-color: #10B981 !important; }
+.stWarning { background: rgba(245,158,11,0.07) !important; border-left-color: #F59E0B !important; }
+.stError { background: rgba(239,68,68,0.07) !important; border-left-color: #EF4444 !important; }
+
+/* ── NAV BRAND HEADER ───────────────────────────────────────── */
+.advisory-nav {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 0 12px 0; border-bottom: 1px solid #16243A; margin-bottom: 1.5rem;
+}
+.advisory-nav-brand { display: flex; flex-direction: column; gap: 2px; }
+.advisory-nav-brand-name {
+    font-size: 1.1rem; font-weight: 700; color: #EFF6FF;
+    letter-spacing: -0.02em; line-height: 1;
+}
+.advisory-nav-brand-sub {
+    font-size: 0.68rem; color: #2D4A6A; text-transform: uppercase;
+    letter-spacing: 0.12em; font-weight: 600;
+}
+
+/* ── CLIENT CARD ────────────────────────────────────────────── */
+.client-card-name { font-size: 0.95rem; font-weight: 600; color: #CBD5E1; margin-bottom: 2px; }
+.client-card-sub { font-size: 0.73rem; color: #2D4A6A; }
+.risk-badge {
+    display: inline-block; font-size: 0.65rem; font-weight: 700;
+    padding: 2px 8px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.06em;
+}
+.risk-badge-set { background: rgba(59,130,246,0.12); color: #60A5FA; border: 1px solid rgba(59,130,246,0.2); }
+.risk-badge-unset { background: rgba(245,158,11,0.1); color: #FCD34D; border: 1px solid rgba(245,158,11,0.2); }
+
+/* ── CLIENT CONTEXT BAR ─────────────────────────────────────── */
+.client-context-bar {
+    background: #0E1829; border: 1px solid #16243A; border-radius: 8px;
+    padding: 10px 16px; margin-bottom: 1rem;
+    display: flex; align-items: center; gap: 12px;
+}
+.context-label { font-size: 0.68rem; color: #2D4A6A; text-transform: uppercase;
+    letter-spacing: 0.08em; font-weight: 600; }
+.context-value { font-size: 0.82rem; color: #64748B; }
+.context-value strong { color: #94A3B8; }
+
+/* ── LOGIN ──────────────────────────────────────────────────── */
+.login-brand { text-align: center; margin-bottom: 2rem; padding: 1.5rem 0 0.5rem; }
+.login-brand-name { font-size: 1.6rem; font-weight: 700; color: #EFF6FF; letter-spacing: -0.03em; }
+.login-brand-sub { font-size: 0.72rem; color: #2D4A6A; text-transform: uppercase;
+    letter-spacing: 0.14em; font-weight: 600; margin-top: 4px; }
 </style>
-""",
-    unsafe_allow_html=True,
-)
-
-st.title("AI-Powered Portfolio Intelligence Engine")
-
-st.markdown(
-    """
-Advisor login is the entry point. After authentication, select or create a client record, then load the existing dashboard on top of that client’s saved data.
-"""
-)
+""", unsafe_allow_html=True)
 
 
 def _clear_login_state() -> None:
@@ -157,68 +287,74 @@ def _build_client_profile(client_record: dict) -> dict:
 
 
 def _render_login_screen() -> None:
-    st.subheader("Advisor Login")
-    st.caption(f"Connecting to backend API at `{API_BASE_URL}`.")
-    login_tab, register_tab = st.tabs(["Login", "Register"])
+    _, center, _ = st.columns([1, 1.1, 1])
+    with center:
+        st.markdown("""
+        <div class="login-brand">
+            <div class="login-brand-name">Vinsan Advisory</div>
+            <div class="login-brand-sub">Institutional Portfolio Intelligence</div>
+        </div>
+        """, unsafe_allow_html=True)
 
-    with login_tab:
-        if st.session_state.get("register_success_message"):
-            st.success(st.session_state.pop("register_success_message"))
-        with st.form("advisor_login_form", clear_on_submit=False):
-            email = st.text_input("Email")
-            password = st.text_input("Password", type="password")
-            submitted = st.form_submit_button("Login", width="stretch")
+        login_tab, register_tab = st.tabs(["Sign In", "Register"])
 
-        if submitted:
-            try:
-                auth_response = login_advisor(email=email, password=password)
-            except APIClientError as exc:
-                st.error(str(exc))
-            else:
-                advisor = auth_response.get("advisor", {})
-                st.session_state["advisor_token"] = auth_response["access_token"]
-                st.session_state["advisor_id"] = advisor.get("id")
-                st.session_state["advisor_name"] = advisor.get("name", "Advisor")
-                st.session_state["advisor_email"] = advisor.get("email")
-                st.session_state["advisor_role"] = advisor.get("role", "advisor")
-                st.success("Login successful.")
-                st.rerun()
+        with login_tab:
+            if st.session_state.get("register_success_message"):
+                st.success(st.session_state.pop("register_success_message"))
+            with st.form("advisor_login_form", clear_on_submit=False):
+                email = st.text_input("Email Address")
+                password = st.text_input("Password", type="password")
+                submitted = st.form_submit_button("Sign In", use_container_width=True)
 
-    with register_tab:
-        with st.form("advisor_register_form", clear_on_submit=False):
-            full_name = st.text_input("Full Name")
-            register_email = st.text_input("Email")
-            register_password = st.text_input("Password", type="password")
-            confirm_password = st.text_input("Confirm Password", type="password")
-            role = st.selectbox("Role", ["advisor", "admin"], index=0)
-            register_submitted = st.form_submit_button("Register", width="stretch")
-
-        if register_submitted:
-            if not full_name.strip() or not register_email.strip() or not register_password or not confirm_password:
-                st.error("All fields are required.")
-            elif len(register_password) < 8:
-                st.error("Password must be at least 8 characters long.")
-            elif register_password != confirm_password:
-                st.error("Passwords do not match.")
-            elif "@" not in register_email or "." not in register_email.split("@")[-1]:
-                st.error("Enter a valid email address.")
-            else:
+            if submitted:
                 try:
-                    register_advisor(
-                        email=register_email,
-                        password=register_password,
-                        name=full_name,
-                        role=role,
-                    )
+                    auth_response = login_advisor(email=email, password=password)
                 except APIClientError as exc:
-                    message = str(exc)
-                    if "already exists" in message.lower():
-                        st.error("An account with this email already exists.")
-                    else:
-                        st.error(message)
+                    st.error(str(exc))
                 else:
-                    st.session_state["register_success_message"] = "Account created. Please login."
+                    advisor = auth_response.get("advisor", {})
+                    st.session_state["advisor_token"] = auth_response["access_token"]
+                    st.session_state["advisor_id"] = advisor.get("id")
+                    st.session_state["advisor_name"] = advisor.get("name", "Advisor")
+                    st.session_state["advisor_email"] = advisor.get("email")
+                    st.session_state["advisor_role"] = advisor.get("role", "advisor")
                     st.rerun()
+
+        with register_tab:
+            with st.form("advisor_register_form", clear_on_submit=False):
+                full_name = st.text_input("Full Name")
+                register_email = st.text_input("Email Address")
+                register_password = st.text_input("Password", type="password")
+                confirm_password = st.text_input("Confirm Password", type="password")
+                role = st.selectbox("Role", ["advisor", "admin"], index=0)
+                register_submitted = st.form_submit_button("Create Account", use_container_width=True)
+
+            if register_submitted:
+                if not full_name.strip() or not register_email.strip() or not register_password or not confirm_password:
+                    st.error("All fields are required.")
+                elif len(register_password) < 8:
+                    st.error("Password must be at least 8 characters.")
+                elif register_password != confirm_password:
+                    st.error("Passwords do not match.")
+                elif "@" not in register_email or "." not in register_email.split("@")[-1]:
+                    st.error("Enter a valid email address.")
+                else:
+                    try:
+                        register_advisor(
+                            email=register_email,
+                            password=register_password,
+                            name=full_name,
+                            role=role,
+                        )
+                    except APIClientError as exc:
+                        message = str(exc)
+                        if "already exists" in message.lower():
+                            st.error("An account with this email already exists.")
+                        else:
+                            st.error(message)
+                    else:
+                        st.session_state["register_success_message"] = "Account created. Please sign in."
+                        st.rerun()
 
 
 def _render_new_client_form(token: str) -> None:
@@ -272,35 +408,37 @@ def _render_new_client_form(token: str) -> None:
 
 def _render_client_selector(token: str) -> None:
     advisor_role = st.session_state.get("advisor_role", "advisor")
-    header_col1, header_col2 = st.columns([4, 1])
-    with header_col1:
-        st.subheader("Client List")
-        st.caption(
-            (
-                f"Signed in as `{st.session_state.get('advisor_name', 'Advisor')}` (`{advisor_role}`). "
-                "Admin can view every client record."
-            )
-            if advisor_role == "admin"
-            else f"Signed in as `{st.session_state.get('advisor_name', 'Advisor')}` (`{advisor_role}`). Advisors see only their own clients."
-        )
-    with header_col2:
-        if st.button("Logout", width="stretch"):
+    advisor_name = st.session_state.get("advisor_name", "Advisor")
+
+    # ── Top nav bar ──────────────────────────────────────────────────────────
+    nav_l, nav_r = st.columns([5, 1])
+    with nav_l:
+        st.markdown(f"""
+        <div style="display:flex;align-items:center;gap:16px;padding:4px 0">
+            <div>
+                <div style="font-size:1.1rem;font-weight:700;color:#EFF6FF;letter-spacing:-0.02em">Vinsan Advisory</div>
+                <div style="font-size:0.7rem;color:#2D4A6A;text-transform:uppercase;letter-spacing:0.1em;font-weight:600">
+                    {advisor_name} &nbsp;·&nbsp; {advisor_role.title()}
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    with nav_r:
+        if st.button("Sign Out", key="cs_logout", use_container_width=True):
             _clear_login_state()
             st.rerun()
 
-    action_col1, action_col2 = st.columns([1, 4])
-    with action_col1:
-        if st.button("New Client", width="stretch"):
-            st.session_state["show_new_client_form"] = not st.session_state.get("show_new_client_form", False)
-    with action_col2:
-        st.caption(
-            "Admin access is global across clients."
-            if advisor_role == "admin"
-            else "Each advisor only sees their own clients."
-        )
+    st.markdown("<div style='margin-top:0.5rem'></div>", unsafe_allow_html=True)
+
+    # ── New client toggle ────────────────────────────────────────────────────
+    if st.button("＋ New Client", key="cs_new_client", type="primary"):
+        st.session_state["show_new_client_form"] = not st.session_state.get("show_new_client_form", False)
 
     if st.session_state.get("show_new_client_form"):
+        st.markdown("<div style='margin-top:0.75rem'></div>", unsafe_allow_html=True)
         _render_new_client_form(token)
+
+    st.markdown("---")
 
     try:
         clients = list_clients(token)
@@ -311,33 +449,65 @@ def _render_client_selector(token: str) -> None:
             st.rerun()
         return
 
+    try:
+        proposal_counts = get_proposal_counts(token)
+    except APIClientError:
+        proposal_counts = {}
+
+    # ── KPI row ──────────────────────────────────────────────────────────────
+    total_clients = len(clients)
+    profiled = sum(1 for c in clients if c.get("risk_class"))
+    total_proposals = sum(proposal_counts.values())
+    clients_with_proposals = sum(1 for c in clients if str(c.get("id")) in proposal_counts)
+
+    k1, k2, k3, k4 = st.columns(4)
+    k1.metric("Total Clients", total_clients)
+    k2.metric("Risk Profiled", profiled)
+    k3.metric("Total Proposals", total_proposals)
+    k4.metric("Clients with Proposals", clients_with_proposals)
+
+    st.markdown("---")
+
     if not clients:
-        st.info("No clients found yet. Create the first client record to begin.")
+        st.info("No clients yet. Click **＋ New Client** to get started.")
         return
 
+    st.markdown(f"<div style='font-size:0.7rem;color:#2D4A6A;text-transform:uppercase;letter-spacing:0.1em;font-weight:600;margin-bottom:0.75rem'>{total_clients} Client{'s' if total_clients!=1 else ''}</div>", unsafe_allow_html=True)
+
     for client in clients:
-        container = st.container(border=True)
-        with container:
-            col1, col2, col3, col4 = st.columns([2.5, 1, 1, 1])
+        risk_class = client.get("risk_class")
+        risk_score = client.get("risk_score")
+        badge_class = "risk-badge-set" if risk_class else "risk-badge-unset"
+        badge_text = risk_class if risk_class else "Pending"
+
+        with st.container(border=True):
+            col1, col2, col3, col4 = st.columns([3, 1.2, 1.2, 0.9])
             with col1:
-                st.markdown(f"**{client.get('name', 'Unnamed Client')}**")
-                st.caption(
-                    (
-                        f"Age {client.get('age', '-')} | Contact: {client.get('contact') or '-'} | Source: {client.get('source_channel') or '-'} | Owner: {client.get('advisor_name') or client.get('advisor_id')}"
-                        if advisor_role == "admin"
-                        else f"Age {client.get('age', '-')} | Contact: {client.get('contact') or '-'} | Source: {client.get('source_channel') or '-'}"
-                    )
+                sub_parts = [f"Age {client.get('age', '—')}"]
+                if client.get("contact"):
+                    sub_parts.append(client["contact"])
+                if client.get("city"):
+                    sub_parts.append(client["city"])
+                if advisor_role == "admin" and (client.get("advisor_name") or client.get("advisor_id")):
+                    sub_parts.append(f"Owner: {client.get('advisor_name') or client.get('advisor_id')}")
+                st.markdown(
+                    f'<div class="client-card-name">{client.get("name", "Unnamed")}</div>'
+                    f'<div class="client-card-sub">{" · ".join(sub_parts)}</div>',
+                    unsafe_allow_html=True,
                 )
             with col2:
-                st.metric("Risk Class", client.get("risk_class") or "Not saved")
+                st.markdown(
+                    f'<div style="margin-top:4px"><span class="risk-badge {badge_class}">{badge_text}</span></div>',
+                    unsafe_allow_html=True,
+                )
             with col3:
-                risk_score = client.get("risk_score")
-                st.metric(
-                    "Risk Score",
-                    f"{float(risk_score):.1f}/10" if risk_score is not None else "—",
+                st.markdown(
+                    f'<div style="font-size:0.7rem;color:#2D4A6A;text-transform:uppercase;letter-spacing:0.08em;font-weight:600;margin-top:2px">Score</div>'
+                    f'<div style="font-size:1.05rem;font-weight:600;color:#94A3B8">{f"{float(risk_score):.1f}" if risk_score is not None else "—"}</div>',
+                    unsafe_allow_html=True,
                 )
             with col4:
-                if st.button("Open", key=f"open_client_{client['id']}", width="stretch"):
+                if st.button("Open →", key=f"open_client_{client['id']}", use_container_width=True):
                     st.session_state["selected_client_id"] = client["id"]
                     st.session_state["loaded_client_id"] = None
                     st.rerun()
@@ -482,12 +652,9 @@ else:
         st.rerun()
 
     if not st.session_state.get("selected_client_id"):
-        dash_tab, settings_tab = st.tabs(["Dashboard", "Advisor Settings"])
+        dash_tab, settings_tab = st.tabs(["Clients", "Settings"])
         with dash_tab:
-            if st.session_state.get("show_new_client_form"):
-                _render_new_client_form(advisor_token)
-                st.markdown("---")
-            render_global_dashboard(advisor_token)
+            _render_client_selector(advisor_token)
         with settings_tab:
             _render_advisor_settings(advisor_token)
     else:
@@ -499,21 +666,41 @@ else:
         if not client_record or not client_profile:
             st.stop()
 
-        action_col1, action_col2, action_col3 = st.columns([1, 4, 1])
-        with action_col1:
-            if st.button("Back to Clients", width="stretch"):
-                _clear_selected_client()
-                st.rerun()
-        with action_col2:
-            st.caption(
-                f"User: `{st.session_state.get('advisor_name', '-')}` (`{st.session_state.get('advisor_role', 'advisor')}`) | Client: `{client_record.get('name', '-')}` | "
-                f"Contact: `{client_record.get('contact') or '-'}` | City: `{client_record.get('city') or '-'}` | "
-                f"Source: `{client_record.get('source_channel') or '-'}` | Owner: `{client_record.get('advisor_name') or client_record.get('advisor_id')}`"
+        # ── Client context bar ───────────────────────────────────────────────
+        bar_l, bar_r = st.columns([5, 1])
+        with bar_l:
+            meta = []
+            if client_record.get("contact"):
+                meta.append(client_record["contact"])
+            if client_record.get("city"):
+                meta.append(client_record["city"])
+            if client_record.get("source_channel"):
+                meta.append(client_record["source_channel"])
+            meta_str = " · ".join(meta) if meta else "—"
+            advisor_label = st.session_state.get("advisor_name", "—")
+            st.markdown(
+                f'<div class="client-context-bar">'
+                f'<div><span class="context-label">Client</span><br>'
+                f'<span class="context-value"><strong>{client_record.get("name", "—")}</strong></span></div>'
+                f'<div style="width:1px;background:#16243A;align-self:stretch"></div>'
+                f'<div><span class="context-label">Details</span><br>'
+                f'<span class="context-value">{meta_str}</span></div>'
+                f'<div style="width:1px;background:#16243A;align-self:stretch"></div>'
+                f'<div><span class="context-label">Advisor</span><br>'
+                f'<span class="context-value">{advisor_label}</span></div>'
+                f'</div>',
+                unsafe_allow_html=True,
             )
-        with action_col3:
-            if st.button("Logout", width="stretch"):
-                _clear_login_state()
-                st.rerun()
+        with bar_r:
+            bcol1, bcol2 = st.columns(2)
+            with bcol1:
+                if st.button("← Back", key="back_to_clients", use_container_width=True):
+                    _clear_selected_client()
+                    st.rerun()
+            with bcol2:
+                if st.button("Sign Out", key="client_logout", use_container_width=True):
+                    _clear_login_state()
+                    st.rerun()
 
         (
             analysis_tab,
@@ -524,11 +711,11 @@ else:
             periodic_review_tab,
             audit_tab,
         ) = st.tabs([
-            "Analysis Workspace",
+            "Analysis",
             "Meeting Notes",
-            "Portfolio Snapshot",
+            "Portfolio",
             "Proposal Builder",
-            "Final Review (Mandatory)",
+            "Final Review",
             "Periodic Review",
             "Audit Trail",
         ])
@@ -591,7 +778,14 @@ else:
         with audit_tab:
             render_audit_trail(advisor_token, selected_client_id)
 
-st.markdown("---")
-with open(PROJECT_ROOT / "DISCLAIMER.txt", "r") as f:
-    disclaimer = f.read()
-st.caption(f"**Disclaimer:** {disclaimer}")
+st.markdown("<br>", unsafe_allow_html=True)
+try:
+    with open(PROJECT_ROOT / "DISCLAIMER.txt", "r") as f:
+        disclaimer = f.read()
+    st.markdown(
+        f'<div style="border-top:1px solid #16243A;padding-top:0.75rem;margin-top:1rem">'
+        f'<span style="font-size:0.68rem;color:#1A2E47">{disclaimer}</span></div>',
+        unsafe_allow_html=True,
+    )
+except FileNotFoundError:
+    pass

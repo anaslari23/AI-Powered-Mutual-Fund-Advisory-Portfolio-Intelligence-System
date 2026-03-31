@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Investment Advisory Proposal — {{ deck.cover.client_name }}</title>
+<style>
+  @page {
+    size: A4;
+    margin: 18mm 16mm 22mm 16mm;
+    @bottom-left {
+      content: "{{ deck.advisor_contact.firm_name or deck.advisor_contact.name }} | Confidential — For Client Use Only";
+      font-size: 7.5px;
+      color: #9ca3af;
+    }
+    @bottom-right {
+      content: "Page " counter(page) " of " counter(pages);
+      font-size: 7.5px;
+      color: #9ca3af;
+    }
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: #ffffff !important;
+    color-scheme: light;
+  }
+
+  body {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 10pt;
+    color: #1f2937;
+    line-height: 1.6;
+    background: #ffffff;
+  }
+
+  /* ── COVER PAGE ──────────────────────────────────────────── */
+  .cover-page {
+    page-break-after: always;
+    min-height: 257mm;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(155deg, #0c1f3f 0%, #1a3a5c 55%, #0f3460 100%);
+    color: #f0f6ff;
+    position: relative;
+    overflow: hidden;
+  }
+  .cover-accent-bar {
+    width: 100%;
+    height: 6mm;
+    background: linear-gradient(90deg, #3b82f6, #60a5fa, #93c5fd);
+  }
+  .cover-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 20mm 22mm 16mm 22mm;
+  }
+  .cover-eyebrow {
+    font-size: 8pt;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #93c5fd;
+    margin-bottom: 6mm;
+  }
+  .cover-title {
+    font-size: 30pt;
+    font-weight: 300;
+    line-height: 1.2;
+    margin-bottom: 2mm;
+    color: #f0f6ff;
+  }
+  .cover-title strong { font-weight: 700; color: #60a5fa; }
+  .cover-subtitle {
+    font-size: 11pt;
+    color: #93c5fd;
+    margin-bottom: 12mm;
+    font-weight: 300;
+  }
+  .cover-divider {
+    width: 40mm;
+    height: 0.5mm;
+    background: #3b82f6;
+    margin-bottom: 10mm;
+  }
+  .cover-client-name {
+    font-size: 22pt;
+    font-weight: 600;
+    color: #f0f6ff;
+    margin-bottom: 4mm;
+  }
+  .cover-client-sub {
+    font-size: 10pt;
+    color: #93c5fd;
+    margin-bottom: 8mm;
+  }
+
+  {% set rc = (deck.cover.risk_class or 'Moderate') | lower | replace(' ', '') %}
+  .risk-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 2mm;
+    padding: 2mm 5mm;
+    border-radius: 20mm;
+    font-size: 8.5pt;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    margin-bottom: 10mm;
+  }
+  .risk-conservative { background: rgba(16,185,129,0.2); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.35); }
+  .risk-moderate { background: rgba(245,158,11,0.2); color: #fcd34d; border: 1px solid rgba(245,158,11,0.35); }
+  .risk-moderatelyaggressive { background: rgba(249,115,22,0.2); color: #fdba74; border: 1px solid rgba(249,115,22,0.35); }
+  .risk-growth, .risk-aggressive { background: rgba(239,68,68,0.2); color: #fca5a5; border: 1px solid rgba(239,68,68,0.35); }
+
+  .cover-footer {
+    padding: 6mm 22mm;
+    border-top: 1px solid rgba(255,255,255,0.12);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    font-size: 8pt;
+    color: #64748b;
+  }
+  .cover-footer-advisor strong { color: #93c5fd; font-size: 9pt; }
+  .cover-footer-meta { text-align: right; color: #64748b; }
+
+  /* ── TYPOGRAPHY ──────────────────────────────────────────── */
+  .page-break { page-break-after: always; }
+
+  .section { margin-bottom: 10mm; page-break-inside: avoid; }
+  .section-eyebrow {
+    font-size: 7pt;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: #3b82f6;
+    margin-bottom: 1mm;
+    font-weight: 600;
+  }
+  .section-title {
+    font-size: 15pt;
+    font-weight: 300;
+    color: #0c1f3f;
+    border-bottom: 2px solid #1a3a5c;
+    padding-bottom: 2mm;
+    margin-bottom: 5mm;
+  }
+  .section-title strong { font-weight: 700; }
+
+  /* ── ADVISORY LETTER ─────────────────────────────────────── */
+  .letter-block {
+    background: #f8fafc;
+    border-left: 4px solid #1a3a5c;
+    padding: 6mm 8mm;
+    margin-bottom: 8mm;
+    border-radius: 0 2mm 2mm 0;
+  }
+  .letter-salutation { font-size: 11pt; font-weight: 600; color: #0c1f3f; margin-bottom: 3mm; }
+  .letter-body { font-size: 10pt; color: #374151; line-height: 1.7; }
+  .letter-body p { margin-bottom: 3mm; }
+  .letter-close { font-size: 9pt; color: #6b7280; margin-top: 4mm; }
+  .letter-close strong { color: #1a3a5c; }
+
+  /* ── CLIENT SNAPSHOT GRID ────────────────────────────────── */
+  .snapshot-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 3mm;
+    margin-bottom: 5mm;
+  }
+  .snapshot-item {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-top: 3px solid #1a3a5c;
+    border-radius: 1mm 1mm 2mm 2mm;
+    padding: 3mm 4mm;
+  }
+  .snapshot-label {
+    font-size: 6.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #6b7280;
+    margin-bottom: 1mm;
+  }
+  .snapshot-value {
+    font-size: 13pt;
+    font-weight: 700;
+    color: #0c1f3f;
+  }
+  .snapshot-value.small { font-size: 10pt; }
+
+  /* ── RATIONALE / NARRATIVE BLOCK ─────────────────────────── */
+  .rationale-block {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 2mm;
+    padding: 5mm 6mm;
+    margin-bottom: 5mm;
+  }
+  .rationale-headline {
+    font-size: 10.5pt;
+    font-weight: 700;
+    color: #1e40af;
+    margin-bottom: 3mm;
+  }
+  .rationale-body {
+    font-size: 10pt;
+    color: #1e3a5f;
+    line-height: 1.7;
+    white-space: pre-line;
+  }
+
+  /* ── CATEGORY BADGE ──────────────────────────────────────── */
+  .category-pill {
+    display: inline-block;
+    padding: 1.5mm 5mm;
+    background: #1a3a5c;
+    color: #e0f2fe;
+    border-radius: 20mm;
+    font-size: 8.5pt;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    margin-bottom: 5mm;
+  }
+
+  /* ── TABLES ──────────────────────────────────────────────── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9pt;
+    margin-top: 3mm;
+  }
+  thead th {
+    background: #1a3a5c;
+    color: #f0f6ff;
+    padding: 2.5mm 3.5mm;
+    text-align: left;
+    font-weight: 500;
+    font-size: 8.5pt;
+    letter-spacing: 0.04em;
+  }
+  thead th.r { text-align: right; }
+  tbody td {
+    padding: 2.5mm 3.5mm;
+    border-bottom: 1px solid #e5e7eb;
+    vertical-align: middle;
+  }
+  tbody tr:nth-child(even) td { background: #f8fafc; }
+  tbody tr:last-child td { border-bottom: 2px solid #1a3a5c; }
+  .r { text-align: right; font-variant-numeric: tabular-nums; }
+  .highlight-row td { background: #eff6ff !important; font-weight: 600; color: #1e40af; }
+  .table-total td { background: #0c1f3f !important; color: #f0f6ff !important; font-weight: 700; }
+
+  /* SIP wealth gain pill */
+  .gain-pill {
+    display: inline-block;
+    padding: 0.5mm 2.5mm;
+    background: #dcfce7;
+    color: #166534;
+    border-radius: 10mm;
+    font-size: 8pt;
+    font-weight: 600;
+  }
+
+  /* ── ALPHA INDICATORS ────────────────────────────────────── */
+  .alpha-pos { color: #16a34a; font-weight: 600; }
+  .alpha-neg { color: #dc2626; font-weight: 600; }
+
+  /* ── ASSUMPTIONS BOX ─────────────────────────────────────── */
+  .assumptions-box {
+    background: #fefce8;
+    border: 1px solid #fde68a;
+    border-left: 4px solid #f59e0b;
+    border-radius: 0 2mm 2mm 0;
+    padding: 4mm 5mm;
+    margin-top: 4mm;
+    font-size: 8.5pt;
+    color: #78350f;
+  }
+  .assumptions-box strong { color: #92400e; }
+
+  /* ── NEXT STEPS ──────────────────────────────────────────── */
+  .steps-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 3mm;
+    margin-top: 3mm;
+  }
+  .step-card {
+    display: flex;
+    gap: 3mm;
+    align-items: flex-start;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 2mm;
+    padding: 3mm 4mm;
+  }
+  .step-number {
+    flex-shrink: 0;
+    width: 7mm;
+    height: 7mm;
+    background: #1a3a5c;
+    color: #f0f6ff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8pt;
+    font-weight: 700;
+  }
+  .step-text { font-size: 9pt; color: #374151; line-height: 1.5; }
+  .step-text strong { color: #0c1f3f; display: block; margin-bottom: 0.5mm; }
+
+  /* ── DISCLAIMER ──────────────────────────────────────────── */
+  .disclaimer-box {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-top: 3px solid #9ca3af;
+    padding: 4mm 5mm;
+    font-size: 7.5pt;
+    color: #6b7280;
+    margin-top: 6mm;
+    line-height: 1.6;
+  }
+
+  /* ── CONTACT BLOCK ───────────────────────────────────────── */
+  .contact-block {
+    background: linear-gradient(135deg, #0c1f3f, #1a3a5c);
+    color: #f0f6ff;
+    border-radius: 2mm;
+    padding: 6mm 8mm;
+    margin-top: 8mm;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 6mm;
+  }
+  .contact-advisor-name { font-size: 13pt; font-weight: 600; color: #f0f6ff; margin-bottom: 1mm; }
+  .contact-firm { font-size: 9pt; color: #93c5fd; margin-bottom: 3mm; }
+  .contact-detail { font-size: 8.5pt; color: #cbd5e1; line-height: 1.7; }
+  .contact-cta {
+    text-align: right;
+    flex-shrink: 0;
+  }
+  .contact-cta-label { font-size: 7.5pt; color: #93c5fd; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 2mm; }
+  .contact-cta-action { font-size: 10pt; font-weight: 700; color: #60a5fa; }
+
+  /* ── SECTION DIVIDER ─────────────────────────────────────── */
+  .section-divider { border: none; border-top: 1px solid #e5e7eb; margin: 6mm 0; }
+
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════ COVER PAGE ══════════════════════════ -->
+<div class="cover-page">
+  <div class="cover-accent-bar"></div>
+  <div class="cover-body">
+    <div class="cover-eyebrow">
+      {% if deck.advisor_contact.firm_name %}{{ deck.advisor_contact.firm_name }}{% else %}{{ deck.advisor_contact.name }}{% endif %}
+      &nbsp;·&nbsp; Personalised Investment Advisory
+    </div>
+    <div class="cover-title">Investment<br><strong>Advisory Proposal</strong></div>
+    <div class="cover-subtitle">A Tailored Wealth Plan Based on Your Profile, Goals &amp; Market Conditions</div>
+    <div class="cover-divider"></div>
+    <div class="cover-client-name">{{ deck.cover.client_name }}</div>
+    <div class="cover-client-sub">
+      {% if deck.client_snapshot.age %}Age {{ deck.client_snapshot.age }} &nbsp;·&nbsp; {% endif %}
+      Primary Goal: {{ deck.fund_category or "Wealth Creation" }}
+    </div>
+    {% set rc = (deck.cover.risk_class or 'Moderate') | lower | replace(' ', '') %}
+    <span class="risk-badge risk-{{ rc }}">&#9679;&nbsp; {{ deck.cover.risk_class }} Investor Profile</span>
+  </div>
+  <div class="cover-footer">
+    <div class="cover-footer-advisor">
+      <strong>{{ deck.advisor_contact.name }}</strong>
+      {% if deck.advisor_contact.firm_name %}<br>{{ deck.advisor_contact.firm_name }}{% endif %}
+      {% if deck.advisor_contact.phone %}<br>{{ deck.advisor_contact.phone }}{% endif %}
+    </div>
+    <div class="cover-footer-meta">
+      Version {{ deck.version_number }}<br>
+      Issued: {{ deck.issue_date }}<br>
+      AMFI-Registered Mutual Fund Distributor
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ ADVISORY LETTER ════════════════════════ -->
+<div class="section">
+  <div class="section-eyebrow">From Your Advisor</div>
+  <div class="section-title">Advisory <strong>Letter</strong></div>
+  <div class="letter-block">
+    <div class="letter-salutation">Dear {{ deck.cover.client_name }},</div>
+    <div class="letter-body">
+      <p>Thank you for entrusting us with your financial planning journey. This proposal has been prepared exclusively for you, taking into account your personal financial profile, investment goals, risk appetite, and prevailing market conditions.</p>
+      <p>After a careful assessment of your profile as a <strong>{{ deck.cover.risk_class }} investor</strong>
+      {% if deck.client_snapshot.age %} at age {{ deck.client_snapshot.age }}{% endif %},
+      we have identified <strong>{{ deck.fund_category or "Mutual Fund" }}</strong> as the most suitable investment category aligned with your objectives. The recommendation below is built on quantitative risk modelling, macroeconomic signals, and systematic SIP projections.</p>
+      <p>This document covers the investment rationale, wealth creation illustrations, benchmark comparisons, key assumptions, and the proposed next steps. We encourage you to review it carefully and reach out with any questions before execution.</p>
+    </div>
+    <div class="letter-close">
+      Warm regards,<br>
+      <strong>{{ deck.advisor_contact.name }}</strong>
+      {% if deck.advisor_contact.firm_name %} — {{ deck.advisor_contact.firm_name }}{% endif %}
+      &nbsp;|&nbsp; {{ deck.issue_date }}
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════ CLIENT PROFILE SNAPSHOT ════════════════════ -->
+<div class="section">
+  <div class="section-eyebrow">Know Your Client</div>
+  <div class="section-title">Client <strong>Profile Snapshot</strong></div>
+  <div class="snapshot-grid">
+    <div class="snapshot-item">
+      <div class="snapshot-label">Client Name</div>
+      <div class="snapshot-value small">{{ deck.cover.client_name }}</div>
+    </div>
+    {% if deck.client_snapshot.age %}
+    <div class="snapshot-item">
+      <div class="snapshot-label">Age</div>
+      <div class="snapshot-value">{{ deck.client_snapshot.age }} yrs</div>
+    </div>
+    {% endif %}
+    <div class="snapshot-item">
+      <div class="snapshot-label">Risk Profile</div>
+      <div class="snapshot-value small">{{ deck.cover.risk_class }}</div>
+    </div>
+    <div class="snapshot-item">
+      <div class="snapshot-label">Recommended Category</div>
+      <div class="snapshot-value small">{{ deck.fund_category or "Mutual Fund" }}</div>
+    </div>
+    <div class="snapshot-item">
+      <div class="snapshot-label">Proposal Version</div>
+      <div class="snapshot-value">v{{ deck.version_number }}</div>
+    </div>
+    <div class="snapshot-item">
+      <div class="snapshot-label">Issued On</div>
+      <div class="snapshot-value small">{{ deck.issue_date }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="page-break"></div>
+
+<!-- ═══════════════════════════ INVESTMENT RATIONALE ════════════════════════ -->
+<div class="section">
+  <div class="section-eyebrow">Investment Strategy</div>
+  <div class="section-title">Why <strong>{{ deck.fund_category | upper }}</strong>?</div>
+
+  <span class="category-pill">Recommended Category: {{ deck.fund_category or "Mutual Fund" }}</span>
+
+  {% if deck.category_rationale %}
+  <div class="rationale-block">
+    <div class="rationale-headline">Advisor's Rationale</div>
+    <div class="rationale-body">{{ deck.category_rationale }}</div>
+  </div>
+  {% else %}
+  <div class="rationale-block">
+    <div class="rationale-headline">Why This Category Suits Your Profile</div>
+    <div class="rationale-body">
+      Based on your {{ deck.cover.risk_class }} risk profile and financial objectives, {{ deck.fund_category or "the recommended mutual fund category" }} offers an optimal balance of growth potential and risk management appropriate for your investment horizon and liquidity needs.
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="assumptions-box">
+    <strong>Advisor's Note:</strong> The category selection above reflects a considered view of your personal risk tolerance, time horizon, and the current macroeconomic environment. This recommendation will be reviewed periodically and updated as your profile or market conditions change.
+  </div>
+</div>
+
+<!-- ═══════════════════════════ SIP WEALTH CREATION ═════════════════════════ -->
+{% set sip_rows = (deck.sip_matrix.rows if deck.sip_matrix else []) %}
+{% if sip_rows %}
+<div class="section">
+  <div class="section-eyebrow">Wealth Creation Illustration</div>
+  <div class="section-title">SIP <strong>Growth Projections</strong></div>
+  <table>
+    <thead>
+      <tr>
+        <th>Monthly SIP</th>
+        <th>Horizon</th>
+        <th>Assumed Return</th>
+        <th class="r">Total Invested</th>
+        <th class="r">Projected Corpus</th>
+        <th class="r">Wealth Gain</th>
+        <th class="r">Multiplier</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in sip_rows %}
+      {% set invested = row.monthly_sip * row.horizon_years * 12 %}
+      {% set gain = row.projected_corpus - invested %}
+      {% set mult = (row.projected_corpus / invested) if invested > 0 else 0 %}
+      <tr>
+        <td><strong>₹{{ "{:,.0f}".format(row.monthly_sip) }}</strong></td>
+        <td>{{ row.horizon_years }} Years</td>
+        <td>{{ row.assumed_return_pct }}% p.a.</td>
+        <td class="r">₹{{ "{:,.0f}".format(invested) }}</td>
+        <td class="r"><strong>₹{{ "{:,.0f}".format(row.projected_corpus) }}</strong></td>
+        <td class="r"><span class="gain-pill">+₹{{ "{:,.0f}".format(gain) }}</span></td>
+        <td class="r">{{ "%.1f"|format(mult) }}x</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div class="assumptions-box" style="margin-top:3mm;">
+    <strong>Projection Assumptions:</strong> Returns shown are assumed at the stated rate per annum, compounded monthly.
+    Actual returns will vary based on market conditions and fund performance. Step-up SIP can significantly accelerate corpus accumulation — your advisor can model step-up scenarios on request.
+  </div>
+</div>
+{% endif %}
+
+<div class="page-break"></div>
+
+<!-- ═══════════════════════════ BENCHMARK COMPARISON ════════════════════════ -->
+{% if deck.benchmark_data %}
+<div class="section">
+  <div class="section-eyebrow">Performance Benchmarking</div>
+  <div class="section-title">Scheme vs <strong>Benchmark Returns</strong></div>
+  <table>
+    <thead>
+      <tr>
+        <th>Period / Fund</th>
+        <th class="r">Scheme Return (%)</th>
+        <th class="r">Benchmark (%)</th>
+        <th class="r">Category Avg (%)</th>
+        <th class="r">Alpha vs Benchmark</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in deck.benchmark_data %}
+      {% set alpha = row.scheme_pct - row.benchmark_pct %}
+      <tr {% if row.scheme_pct > row.benchmark_pct %}class="highlight-row"{% endif %}>
+        <td><strong>{{ row.period }}</strong></td>
+        <td class="r">{{ "%.1f"|format(row.scheme_pct) }}%</td>
+        <td class="r">{{ "%.1f"|format(row.benchmark_pct) }}%</td>
+        <td class="r">{{ "%.1f"|format(row.category_avg_pct) }}%</td>
+        <td class="r">
+          {% if alpha >= 0 %}
+          <span class="alpha-pos">+{{ "%.1f"|format(alpha) }}%</span>
+          {% else %}
+          <span class="alpha-neg">{{ "%.1f"|format(alpha) }}%</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div class="assumptions-box" style="margin-top:3mm;">
+    <strong>Note:</strong> Rows highlighted in blue indicate periods where the recommended scheme outperformed its benchmark.
+    Past performance is not a guarantee of future returns. Alpha = Scheme Return − Benchmark Return.
+  </div>
+</div>
+{% endif %}
+
+<!-- ══════════════════════════════ KEY ASSUMPTIONS ══════════════════════════ -->
+<div class="section">
+  <div class="section-eyebrow">Transparency &amp; Disclosures</div>
+  <div class="section-title">Key <strong>Planning Assumptions</strong></div>
+  <table>
+    <thead>
+      <tr>
+        <th>Parameter</th>
+        <th>Assumption</th>
+        <th>Rationale</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Base Rate of Return</td>
+        <td>12% p.a. (nominal)</td>
+        <td>Long-run equity mutual fund median; varies by category</td>
+      </tr>
+      <tr>
+        <td>Inflation Rate</td>
+        <td>~6% p.a.</td>
+        <td>RBI medium-term CPI target range</td>
+      </tr>
+      <tr>
+        <td>Investment Vehicle</td>
+        <td>SIP (Monthly, Auto-Debit)</td>
+        <td>Rupee cost averaging; removes market-timing risk</td>
+      </tr>
+      <tr>
+        <td>Tax Treatment</td>
+        <td>Pre-tax projections shown</td>
+        <td>LTCG at 12.5% (equity) above ₹1.25L/year — consult tax advisor</td>
+      </tr>
+      <tr>
+        <td>Reinvestment</td>
+        <td>Growth option (reinvested)</td>
+        <td>Dividend payout reduces compounding effect</td>
+      </tr>
+      <tr>
+        <td>Review Cadence</td>
+        <td>Annual portfolio review recommended</td>
+        <td>Rebalancing triggered by ±5% drift from target allocation</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ═══════════════════════════════ NEXT STEPS ══════════════════════════════ -->
+<div class="section">
+  <div class="section-eyebrow">Action Plan</div>
+  <div class="section-title">Proposed <strong>Next Steps</strong></div>
+  <div class="steps-grid">
+    <div class="step-card">
+      <div class="step-number">1</div>
+      <div class="step-text">
+        <strong>KYC Verification</strong>
+        Confirm your PAN, Aadhaar, and bank details are registered with the chosen AMC. First-time investors must complete e-KYC via CAMS/KFintech.
+      </div>
+    </div>
+    <div class="step-card">
+      <div class="step-number">2</div>
+      <div class="step-text">
+        <strong>Mandate Registration</strong>
+        Set up a NACH / e-mandate with your bank for automated monthly SIP debit. Processing typically takes 15–20 working days for the first instalment.
+      </div>
+    </div>
+    <div class="step-card">
+      <div class="step-number">3</div>
+      <div class="step-text">
+        <strong>SIP Initiation</strong>
+        Once the mandate is active, your advisor will initiate the SIP on the agreed date. Confirm the monthly SIP amount and preferred debit date.
+      </div>
+    </div>
+    <div class="step-card">
+      <div class="step-number">4</div>
+      <div class="step-text">
+        <strong>Annual Review &amp; Step-Up</strong>
+        Schedule an annual review to assess portfolio performance, rebalance if necessary, and consider a 10–15% SIP step-up to stay ahead of inflation.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ CONTACT ══════════════════════════════════ -->
+<div class="contact-block">
+  <div>
+    <div class="contact-advisor-name">{{ deck.advisor_contact.name }}</div>
+    {% if deck.advisor_contact.firm_name %}
+    <div class="contact-firm">{{ deck.advisor_contact.firm_name }}</div>
+    {% endif %}
+    <div class="contact-detail">
+      {% if deck.advisor_contact.email %}Email: {{ deck.advisor_contact.email }}<br>{% endif %}
+      {% if deck.advisor_contact.phone %}Phone: {{ deck.advisor_contact.phone }}<br>{% endif %}
+      AMFI-Registered Mutual Fund Distributor
+    </div>
+  </div>
+  <div class="contact-cta">
+    <div class="contact-cta-label">Ready to invest?</div>
+    <div class="contact-cta-action">Contact your advisor today</div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════ DISCLAIMER ═════════════════════════════ -->
+<div class="disclaimer-box">
+  <strong>IMPORTANT DISCLOSURE —</strong> {{ disclaimer }}
+</div>
+
+</body>
+</html>
