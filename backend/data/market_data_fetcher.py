@@ -197,7 +197,8 @@ class MarketDataFetcher:
         assets = list(TICKER_MAP.keys())
         correlation_matrix = correlation_matrix.reindex(index=assets, columns=assets)
         correlation_matrix = correlation_matrix.fillna(0.0)
-        np.fill_diagonal(correlation_matrix.values, 1.0)
+        for i in range(len(correlation_matrix)):
+            correlation_matrix.iloc[i, i] = 1.0
 
         self._save_to_cache(df)
 
